@@ -158,12 +158,12 @@ for command in processes:
     command_final = command_final.replace( "%start_seed%", str(start_seed))
     command_final = command_final.replace( "%job_seeds%", job_seeds)
 
-    print command_final
-    print
-
+    print "Submitting: " + command[1]
 
     f = open("DELETE.ME", "w")
     f.write(command_final)
+    f.close()
+    time.sleep(1)
 
     os.system("qsub DELETE.ME")
     time.sleep(2)
