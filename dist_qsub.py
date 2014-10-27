@@ -132,7 +132,7 @@ rm dist_transfer.tar.gz
 """
 
 if not os.path.exists(settings['dest_dir']):
-        os.makedirs(settings['dest_dir'])
+    os.makedirs(settings['dest_dir'])
 
 def strdiff(str1, str2):
     for i in range(len(str1)):
@@ -157,6 +157,12 @@ for command in processes:
 
     command_final = command_final.replace( "%start_seed%", str(start_seed))
     command_final = command_final.replace( "%job_seeds%", job_seeds)
+
+    # clean up the target directories
+    for i in range(job_ct + 1):
+        jobtarget = settings['dest_dir'] + "/" + command[1] + "_" + str(start_seed + i)
+        if os.path.exists(jobtarget):
+            os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
     print "Submitting: " + command[1]
 
