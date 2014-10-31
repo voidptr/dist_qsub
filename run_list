@@ -12,11 +12,11 @@ set dest_dir /mnt/home/caninoko/tmp/qsub_dev/output/100
 
 #Test A
 
-100001..100020 TestA echo "TestA ZOMG"
+#100001..100020 TestA echo "TestA ZOMG"
 
 #Test B
 
-100101..100201 TestB echo "TestB"; touch poop; touch pee; echo "TestBHAHA"
+#100101..100201 TestB echo "TestB"; touch poop; touch pee; echo "TestBHAHA"
 
 #Test C
 
@@ -24,11 +24,11 @@ set dest_dir /mnt/home/caninoko/tmp/qsub_dev/output/100
 
 #Test D
 
-10..50 TestD no thing; no other thing
+#10..50 TestD no thing; no other thing
 
 #Test E
 
-89..102 TestE echo "Curled over it."; touch poop
+#89..102 TestE echo "Curled over it."; touch poop
 
 #Test F
 

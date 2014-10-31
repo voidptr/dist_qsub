@@ -92,7 +92,6 @@ if ('walltime' in settings.keys()):
 if ('mem_request' in settings.keys()):
     l_string.append( "mem=" + str(int(float(settings['mem_request']) * 1024)) + "mb" )
 
-
 script_template = """
 #!/bin/bash -login
 #PBS -q main
@@ -101,6 +100,8 @@ script_template = """
 #PBS -o %dest_dir%/message.log
 #PBS -j oe
 #PBS -t %job_seeds%
+#PBS -M %email_address%
+#PBS -m ae
 
 TARGETDIR=%dest_dir%
 STARTSEED=%start_seed%
@@ -108,7 +109,7 @@ seed=$(($STARTSEED + $PBS_ARRAYID))
 JOBTARGET=%jobname%"_"$seed
 
 
-echo "seed="$seed "jobtarget="$JOBTARGET "targetdir="$TARGETDIR "pbs_arrayid="$PBS_ARRAYID "pbs_jobname="$PBS_JOBNAME "tmpdir="$TMPDIR;
+#echo "seed="$seed "jobtarget="$JOBTARGET "targetdir="$TARGETDIR "pbs_arrayid="$PBS_ARRAYID "pbs_jobname="$PBS_JOBNAME "tmpdir="$TMPDIR;
 
 #change directory to the directory this was run from
 cd $PBS_O_WORKDIR
@@ -116,7 +117,7 @@ mkdir $TMPDIR/$JOBTARGET
 cp -r config/* $TMPDIR/$JOBTARGET
 cd $TMPDIR/$JOBTARGET
 
-touch $JOBTARGET".here"
+#touch $JOBTARGET".here"
 
 %job_command%
 
@@ -140,6 +141,7 @@ def strdiff(str1, str2):
             return i
 
 script_template = script_template.replace( "%lstring%", ",".join(l_string))
+script_template = script_template.replace( "%email_address%", settings['email'])
 
 for command in processes:
     command_final = script_template
