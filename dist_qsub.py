@@ -13,6 +13,19 @@ import time
 
 # Set up options
 usage = """usage: %prog [options] [run_list] 
+
+In the run_list file, currently supported "set" options are:
+
+  email - (required) the email address for HPCC messages (crashes only)
+  email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.  
+  class_pref - supported classes 91, 92, 95, 150
+  walltime - ints only, in hours
+  mem_request - in gigabytes
+  dest_dir - (required) the path to the output directory
+
+Currently unsupported, but planned options:
+  config_dir
+
 """
 parser = OptionParser(usage)
 parser.add_option("-v", "--verbose", action = "store_true", dest = "verbose",
@@ -48,6 +61,12 @@ for line in fd:
 if options.debug_messages:
     for command in processes:
         print command
+
+if not "email" in settings.keys():
+    parser.error("email must be defined in run_list")
+
+if not "dest_dir" in settings.keys():
+    parser.error("dest_dir must be defined in run_list")
 
 for command in processes:
     bits = command[2].split(";")
@@ -92,6 +111,11 @@ if ('walltime' in settings.keys()):
 if ('mem_request' in settings.keys()):
     l_string.append( "mem=" + str(int(float(settings['mem_request']) * 1024)) + "mb" )
 
+email_when = "final"
+if 'email_when' in settings.keys() and settings['email_when'] == "always":
+    email_when = "always"
+
+
 script_template = """
 #!/bin/bash -login
 #PBS -q main
@@ -101,13 +125,12 @@ script_template = """
 #PBS -j oe
 #PBS -t %job_seeds%
 #PBS -M %email_address%
-#PBS -m ae
+#PBS -l epilogue=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 
 TARGETDIR=%dest_dir%
 STARTSEED=%start_seed%
 seed=$(($STARTSEED + $PBS_ARRAYID))
 JOBTARGET=%jobname%"_"$seed
-
 
 #echo "seed="$seed "jobtarget="$JOBTARGET "targetdir="$TARGETDIR "pbs_arrayid="$PBS_ARRAYID "pbs_jobname="$PBS_JOBNAME "tmpdir="$TMPDIR;
 
@@ -142,6 +165,7 @@ def strdiff(str1, str2):
 
 script_template = script_template.replace( "%lstring%", ",".join(l_string))
 script_template = script_template.replace( "%email_address%", settings['email'])
+script_template = script_template.replace( "%email_when%", email_when)
 
 for command in processes:
     command_final = script_template
