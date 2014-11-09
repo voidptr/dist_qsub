@@ -28,6 +28,8 @@ Currently unsupported, but planned options:
 
 """
 parser = OptionParser(usage)
+parser.add_option("-p", "--printonly", action="store_true", dest="printonly",
+                  default = False, help = "only print the qsub file (DELETE.ME), without submitting.")
 parser.add_option("-v", "--verbose", action = "store_true", dest = "verbose",
                   default = False, help = "print extra messages to stdout")
 parser.add_option("-d", "--debug_messages", action = "store_true", 
@@ -107,7 +109,11 @@ if len(feature) > 0:
     l_string.append(":".join(feature))
 
 if ('walltime' in settings.keys()):
-    l_string.append( "walltime=" + settings['walltime'] + ":00:00" )
+    hours = int(float(settings['walltime']))
+    remaining_fraction = float(settings['walltime']) - hours
+    minutes = int(remaining_fraction * 60)
+    seconds = int(((remaining_fraction * 60) - minutes) * 60)
+    l_string.append( "walltime=" + str(hours) + ":" + str(minutes).zfill(2) + ":" + str(seconds).zfill(2) )
 if ('mem_request' in settings.keys()):
     l_string.append( "mem=" + str(int(float(settings['mem_request']) * 1024)) + "mb" )
 
@@ -190,12 +196,12 @@ for command in processes:
         if os.path.exists(jobtarget):
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
-    print "Submitting: " + command[1]
-
     f = open("DELETE.ME", "w")
     f.write(command_final)
     f.close()
     time.sleep(1)
 
-    os.system("qsub DELETE.ME")
+    if not options.printonly:
+        print "Submitting: " + command[1]
+        os.system("qsub DELETE.ME")
     time.sleep(2)
