@@ -10,6 +10,7 @@ import os
 from optparse import OptionParser
 import sys
 import time
+from os.path import expanduser
 
 # Set up options
 usage = """usage: %prog [options] [run_list] 
@@ -35,6 +36,8 @@ parser.add_option("-v", "--verbose", action = "store_true", dest = "verbose",
 parser.add_option("-d", "--debug_messages", action = "store_true", 
                   dest = "debug_messages",
                   default = False, help = "print debug messages to stdout")
+parser.add_option("-c", "--checkpoint", action = "store_true",
+                  dest="checkpoint", default=True, help="apply checkpointing.")
 ## fetch the args
 (options, args) = parser.parse_args()
 
@@ -74,6 +77,7 @@ for command in processes:
     bits = command[2].split(";")
     newcomm = []
     for bit in bits:
+        #newcomm.append(bit.lstrip())
         newcomm.append(bit.lstrip() + " 2>&1 | cat >> run.log")
 
     command[2] = "\n".join(newcomm)
@@ -108,6 +112,14 @@ if ('class_pref' in settings.keys()):
 if len(feature) > 0:
     l_string.append(":".join(feature))
 
+config_dir = "config"
+if ('config_dir' in settings.keys()):
+    config_dir = settings['config_dir']
+    config_dir.replace("~", expanduser("~"))
+
+dest_dir = settings['dest_dir']
+dest_dir.replace("~", expanduser("~"))
+
 if ('walltime' in settings.keys()):
     hours = int(float(settings['walltime']))
     remaining_fraction = float(settings['walltime']) - hours
@@ -122,7 +134,7 @@ if 'email_when' in settings.keys() and settings['email_when'] == "always":
     email_when = "always"
 
 
-script_template = """
+script_template_basic = """
 #!/bin/bash -login
 #PBS -q main
 #PBS -l %lstring%
@@ -143,10 +155,8 @@ JOBTARGET=%jobname%"_"$seed
 #change directory to the directory this was run from
 cd $PBS_O_WORKDIR
 mkdir $TMPDIR/$JOBTARGET
-cp -r config/* $TMPDIR/$JOBTARGET
+cp -r %config_dir%/* $TMPDIR/$JOBTARGET
 cd $TMPDIR/$JOBTARGET
-
-#touch $JOBTARGET".here"
 
 %job_command%
 
@@ -161,6 +171,32 @@ tar xzf dist_transfer.tar.gz
 rm dist_transfer.tar.gz
 """
 
+script_template_checkpointing = """
+#!/bin/bash -login
+#PBS -q main
+#PBS -l %lstring%
+#PBS -N %jobname%
+#PBS -o %dest_dir%/message.log
+#PBS -j oe
+#PBS -t %job_seeds%
+#PBS -M %email_address%
+
+export TARGETDIR=%dest_dir%
+export STARTSEED=%start_seed%
+export seed=$(($STARTSEED + $PBS_ARRAYID))
+export JOBTARGET=%jobname%"_"$seed
+export JOBNAME=%jobname%
+export JOBSEEDS=%job_seeds%
+export DEST_DIR=%dest_dir%
+export LSTRING=%lstring%
+export JOBCOMMAND="%job_command%"
+export CPR=0
+export CONFIGDIR=%config_dir%
+export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
+
+/mnt/research/devolab/dist_qsub/dist_longjob.sh
+"""
+
 if not os.path.exists(settings['dest_dir']):
     os.makedirs(settings['dest_dir'])
 
@@ -169,14 +205,19 @@ def strdiff(str1, str2):
         if str1[i] != str2[i]:
             return i
 
+script_template = script_template_basic
+if options.checkpoint:
+    script_template = script_template_checkpointing
+
 script_template = script_template.replace( "%lstring%", ",".join(l_string))
 script_template = script_template.replace( "%email_address%", settings['email'])
 script_template = script_template.replace( "%email_when%", email_when)
+script_template = script_template.replace( "%dest_dir%", dest_dir )
+script_template = script_template.replace( "%config_dir%", config_dir )
 
 for command in processes:
     command_final = script_template
     command_final = command_final.replace( "%jobname%", command[1] )
-    command_final = command_final.replace( "%dest_dir%", settings['dest_dir'])
     command_final = command_final.replace( "%job_command%", command[2] )
 
     job_seeds = ""
