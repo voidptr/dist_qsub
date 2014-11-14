@@ -157,7 +157,7 @@ checkpoint_timeout() {
     while read p || [[ -n $p ]] 
     do
         qdel -t $p ${sid}[]
-    done <${TARGETDIR}/done_arrayjobs.txt
+    done <${TARGETDIR}/${JOBNAME}_done_arrayjobs.txt
 
     # send an un-hold message to our particular successor sub-job 
     echo "qrls -t $PBS_ARRAYID ${sid}[]"
@@ -196,7 +196,7 @@ kill ${timeout} # prevent it from doing anything dumb.
 echo "Oh, hey, we finished before the timeout!"
 
 ## mark our job as being complete, so it gets cleaned up in later iterations.
-echo $PBS_ARRAYID >> $TARGETDIR/done_arrayjobs.txt
+echo $PBS_ARRAYID >> $TARGETDIR/${JOBNAME}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
 sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
