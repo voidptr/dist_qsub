@@ -31,6 +31,8 @@ echo LSTRING $LSTRING
 echo JOBCOMMAND $JOBCOMMAND
 echo CONFIGDIR $CONFIGDIR
 echo CPR $CPR
+echo EMAILSCRIPT $EMAILSCRIPT
+echo USESCRATCH $USESCRATCH
 
 ###### get the job going
 if [ $CPR -eq "0" ] ## initial
@@ -130,8 +132,8 @@ checkpoint_timeout() {
 
                 corrected_lstring=`echo $LSTRING | tr " " ","`
 
-                echo qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" /mnt/research/devolab/dist_qsub/dist_longjob.sh
-                qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" /mnt/research/devolab/dist_qsub/dist_longjob.sh
+                echo qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" /mnt/research/devolab/dist_qsub/dist_longjob.sh
+                qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" /mnt/research/devolab/dist_qsub/dist_longjob.sh
 
                 sleep 10
 

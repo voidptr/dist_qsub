@@ -141,7 +141,7 @@ script_template_basic = """
 #PBS -q main
 #PBS -l %lstring%
 #PBS -N %jobname%
-#PBS -o %dest_dir%/message.log
+#PBS -o %dest_dir%/%jobname%_message.log
 #PBS -j oe
 #PBS -t %job_seeds%
 #PBS -M %email_address%
@@ -178,7 +178,7 @@ script_template_checkpointing = """
 #PBS -q main
 #PBS -l %lstring%
 #PBS -N %jobname%
-#PBS -o %dest_dir%/message.log
+#PBS -o %dest_dir%/%jobname%_message.log
 #PBS -j oe
 #PBS -t %job_seeds%
 #PBS -M %email_address%
@@ -195,6 +195,7 @@ export JOBCOMMAND="%job_command%"
 export CPR=0
 export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
+export USESCRATCH=%use_scratch%
 
 /mnt/research/devolab/dist_qsub/dist_longjob.sh
 """
