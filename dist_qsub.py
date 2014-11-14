@@ -77,10 +77,12 @@ for command in processes:
     bits = command[2].split(";")
     newcomm = []
     for bit in bits:
-        #newcomm.append(bit.lstrip())
-        newcomm.append(bit.lstrip() + " 2>&1 | cat >> run.log")
+        if options.checkpoint:
+            newcomm.append(bit.lstrip())
+        else:
+            newcomm.append(bit.lstrip() + " 2>&1 | cat >> run.log")
 
-    command[2] = "\n".join(newcomm)
+    command[2] = ";".join(newcomm)
 
 
 l_string = []
@@ -188,7 +190,7 @@ export JOBTARGET=%jobname%"_"$seed
 export JOBNAME=%jobname%
 export JOBSEEDS=%job_seeds%
 export DEST_DIR=%dest_dir%
-export LSTRING=%lstring%
+export LSTRING="%lstring_spaces%"
 export JOBCOMMAND="%job_command%"
 export CPR=0
 export CONFIGDIR=%config_dir%
@@ -210,6 +212,7 @@ if options.checkpoint:
     script_template = script_template_checkpointing
 
 script_template = script_template.replace( "%lstring%", ",".join(l_string))
+script_template = script_template.replace( "%lstring_spaces%", " ".join(l_string))
 script_template = script_template.replace( "%email_address%", settings['email'])
 script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
