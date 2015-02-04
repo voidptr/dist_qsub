@@ -3,7 +3,7 @@ set email caninoko@msu.edu
 set freq_email Crash
 set priority 1
 set class_pref 150 
-set walltime 1
+set walltime 12 
 set mem_request 0.5 
 set config_dir config
 set max_cpus 90 

@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #DESCRIPTION checkpoint restart for long jobs, and batching of subsequent jobs into arrays
 #
 # Inspired by longjob, written by Dirk Colbry
@@ -62,18 +62,48 @@ then
     export PID=$!
 
 else ## restart an existing job!
-    
-    # go to the final location, where we should've stashed our checkpoint
-    cd $TARGETDIR/$JOBTARGET 
 
-    # restart our job, using the pwd we saved before!
+    # go to the final location, where we should've stashed our checkpoint
+    cd $TARGETDIR/$JOBTARGET
+
+    if [ $CPR -eq "2" ] ## we're performing some necromancy here!
+    then
+        ## ideally, we don't try to start any jobs that we know completed
+        ## already. We know this because completed jobs will have cleaned
+        ## up their checkpoint.blcr* files.
+        if [ -f checkpoint.blcr~ ]
+        then
+            ## if we've got a backup, use that instead. Better to back up a
+            ## step, than to risk pulling in a bad (unfinished, failed)
+            ## checkpoint file
+            cp checkpoint.blcr~ checkpoint.blcr
+        fi
+
+        if [ ! -f checkpoint.blcr ] # if there's no checkpoint
+        then
+            echo "Nothing to resuscitate."
+            ## mark our job as being done, so it gets cleaned up in later iterations.
+            echo $PBS_ARRAYID >> $TARGETDIR/${JOBNAME}_done_arrayjobs.txt
+            ## TODO - this could create a lineage of zombie jobs if a resuscitation
+            ## attempt is made on an already finished job. Imagine if this job
+            ## gets finally queued after everyone else has moved on to the next
+            ## iteration. It'd be the last one left to clean itself up from the
+            ## next iteration. So, how can I ensure that they all get cleaned
+            ## up? Imagine if EVERYONE is two iterations ahead, then there'll
+            ## be a freaking line of zombie hold jobs that will never be
+            ## enabled, but have no mechanism for getting cleaned up.
+            exit 0
+        fi
+    fi
+
+    # restart our job, using the context we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
     cr_restart --no-restore-pid --file checkpoint.blcr >> run.log 2>&1 &
     PID=$!
 fi
 
-echo $LSTRING >> lstring.out
+#echo $LSTRING >> lstring.out
 
 copy_out() {
     tar czf dist_transfer.tar.gz .
@@ -87,16 +117,45 @@ copy_out() {
 checkpoint_timeout() {
     echo "Timeout. Checkpointing Job"
 
+    # make a backup of the starting checkpoint file
+    mv checkpoint.blcr checkpoint.blcr~
+
     time cr_checkpoint --term $PID
 
     if [ ! "$?" == "0" ]
     then
         echo "Failed to checkpoint."
-        exit 2
-    fi
 
-    # rename the context file
-    mv context.${PID} checkpoint.blcr
+## TODO - revisit the died_once kill-switch. I feel like there's a corner
+## case in here, but I can't quite put my finger on it. Stupid spaghetti code.
+
+        if [ -f checkpoint.blcr~ ] && [ ! -f died_once.touch ]
+        then
+            echo "Attempting to recover by starting from a previous checkpoint."
+            cp checkpoint.blcr~ checkpoint.blcr
+            touch died_once.touch ## so we don't do this indefinitely
+        else
+            ## the only reason this could happen is if we die in the initial
+            ## CPR=0 wave, without a checkpoint file ever having been produced.
+            ## Ultimately, what this means is that we ran, somehow, all the
+            ## way to the end of the timeout, but weren't able to checkpoint
+            ## at all, the first time. I'm making a judgement call that this
+            ## is bad, and probably not an HPCC issue with checkpointing,
+            ## so I won't mandate a restart.
+            ## This is one of those corner cases. DWI.
+            ## ~~~ OR ~~~ we already tried restarting from backup once.
+            echo "No working backup checkpoint file was found. Calling it dead."
+
+            ## mark our job as being done, so it gets cleaned up in later iterations.
+            echo $PBS_ARRAYID >> $TARGETDIR/${JOBNAME}_done_arrayjobs.txt
+            ## also mark it as dead, for debugging purposes later
+            echo $PBS_ARRAYID >> $TARGETDIR/${JOBNAME}_dead_arrayjobs.txt
+            exit 2
+        fi
+    else
+        # rename the context file
+        mv context.${PID} checkpoint.blcr
+    fi
 
     ## calculate what the successor job's name should be
 
@@ -156,12 +215,12 @@ checkpoint_timeout() {
     sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
 
     # delete all the finished jobs we know about (for sanity)
-    while read p || [[ -n $p ]] 
+    while read p || [[ -n $p ]]
     do
         qdel -t $p ${sid}[]
     done <${TARGETDIR}/${JOBNAME}_done_arrayjobs.txt
 
-    # send an un-hold message to our particular successor sub-job 
+    # send an un-hold message to our particular successor sub-job
     echo "qrls -t $PBS_ARRAYID ${sid}[]"
     qrls -t $PBS_ARRAYID ${sid}[]
 }
@@ -178,27 +237,32 @@ timeout=$!
 echo "starting timer (${timeout}) for $BLCR_WAIT_SEC seconds"
 
 echo "Waiting on cr_run job: $PID"
-wait ${PID} 
+wait ${PID}
 RET=$?
 
 
 #Check to see if job finished because it checkpointed
-if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint 
+if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint
 then
 	echo "Job seems to have been checkpointed, waiting for checkpoint_timeout to complete."
 	wait ${timeout}
 	exit 0
 fi
 
-## JOB completed
+## JOB completed! And by itself, not because of checkpoint!
 
-#Kill timeout timer 
+#Kill timeout timer
 kill ${timeout} # prevent it from doing anything dumb.
 
 echo "Oh, hey, we finished before the timeout!"
 
 ## mark our job as being complete, so it gets cleaned up in later iterations.
 echo $PBS_ARRAYID >> $TARGETDIR/${JOBNAME}_done_arrayjobs.txt
+
+## clean up old checkpoints, burn and salt the body to avoid necromancy
+## ("CPR=2")
+rm checkpoint.blcr~
+rm checkpoint.blcr
 
 ## delete our successor job, should there be one
 sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`

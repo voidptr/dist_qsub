@@ -13,12 +13,12 @@ import time
 from os.path import expanduser
 
 # Set up options
-usage = """usage: %prog [options] [run_list] 
+usage = """usage: %prog [options] [run_list]
 
 In the run_list file, currently supported "set" options are:
 
   email - (required) the email address for HPCC messages (crashes only)
-  email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.  
+  email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.
   class_pref - supported classes 91, 92, 95, 150
   walltime - ints only, in hours
   mem_request - in gigabytes
@@ -33,13 +33,18 @@ parser.add_option("-p", "--printonly", action="store_true", dest="printonly",
                   default = False, help = "only print the qsub file (DELETE.ME), without submitting.")
 parser.add_option("-v", "--verbose", action = "store_true", dest = "verbose",
                   default = False, help = "print extra messages to stdout")
-parser.add_option("-d", "--debug_messages", action = "store_true", 
+parser.add_option("-d", "--debug_messages", action = "store_true",
                   dest = "debug_messages",
                   default = False, help = "print debug messages to stdout")
 parser.add_option("-c", "--checkpoint", action = "store_true",
-                  dest="checkpoint", default=True, help="apply checkpointing.")
+                  dest="checkpoint", default=False, help="apply checkpointing.")
+parser.add_option("-r", "--resuscitate", action = "store_true",
+                  dest="resuscitate", default=False, help="try resuscitating dead checkpoint replicates.")
 ## fetch the args
 (options, args) = parser.parse_args()
+
+if (options.resuscitate):
+    options.checkpoint = True ## just clean this up now. :P
 
 run_list = "run_list"
 if (len(args) > 0):
@@ -53,7 +58,11 @@ else:
 settings = {}
 processes = []
 for line in fd:
-    line = line.strip().lstrip() ## strip off the leading and following whitespace. 
+
+    if line.find('#') > -1:
+        line = line[:line.find('#')]
+
+    line = line.strip().lstrip() ## strip off the leading and following whitespace.
 
     if len(line) == 0 or line[0] == "#":
         continue
@@ -63,6 +72,7 @@ for line in fd:
         settings[bits[1]] = bits[2];
     else:
         processes.append(line.split(" ", 2))
+
 if options.debug_messages:
     for command in processes:
         print command
@@ -87,19 +97,19 @@ for command in processes:
 
 l_string = []
 
-p_string = []
-if ('ppn' in settings.keys()):
-    pstring.append( "ppn=" + settings['ppn'] )
-if ('nodes' in settings.keys()):
-    pstring.append( "nodes=" + settings['nodes'] )
-if len(p_string) > 0:
-    lstring.append( ":".join(p_string) )
+#p_string = []
+#if ('ppn' in settings.keys()):
+#    p_string.append( "ppn=" + settings['ppn'] )
+#if ('nodes' in settings.keys()):
+#    p_string.append( "nodes=" + settings['nodes'] )
+#if len(p_string) > 0:
+#    l_string.append( ":".join(p_string) )
 
 feature = []
 if ('feature' in settings.keys()):
     feature_str = settings['feature'].split(',')
     for ftr in feature_str:
-        feature.append("feature=" + ftr) 
+        feature.append("feature=" + ftr)
 
 if ('class_pref' in settings.keys()):
     if settings['class_pref'] == '91': # amd05
@@ -122,12 +132,18 @@ if ('config_dir' in settings.keys()):
 dest_dir = settings['dest_dir']
 dest_dir.replace("~", expanduser("~"))
 
-if ('walltime' in settings.keys()):
+if (options.checkpoint or options.resuscitate):
+    l_string.append("walltime=4:00:00")
+    if ('walltime' in settings.keys()):
+        print "WARNING: Ignoring walltime (%s hours) because checkpointing" % settings['walltime']
+
+elif ('walltime' in settings.keys()):
     hours = int(float(settings['walltime']))
     remaining_fraction = float(settings['walltime']) - hours
     minutes = int(remaining_fraction * 60)
     seconds = int(((remaining_fraction * 60) - minutes) * 60)
     l_string.append( "walltime=" + str(hours) + ":" + str(minutes).zfill(2) + ":" + str(seconds).zfill(2) )
+
 if ('mem_request' in settings.keys()):
     l_string.append( "mem=" + str(int(float(settings['mem_request']) * 1024)) + "mb" )
 
@@ -173,6 +189,33 @@ tar xzf dist_transfer.tar.gz
 rm dist_transfer.tar.gz
 """
 
+script_template_checkpointing_resuscitate = """
+#!/bin/bash -login
+#PBS -q main
+#PBS -l %lstring%
+#PBS -N %jobname%
+#PBS -o %dest_dir%/%jobname%_message.log
+#PBS -j oe
+#PBS -t %job_seeds%
+#PBS -M %email_address%
+
+export TARGETDIR=%dest_dir%
+export STARTSEED=%start_seed%
+export seed=$(($STARTSEED + $PBS_ARRAYID))
+export JOBTARGET=%jobname%"_"$seed
+export JOBNAME=%jobname%
+export JOBSEEDS=%job_seeds%
+export DEST_DIR=%dest_dir%
+export LSTRING="%lstring_spaces%"
+export JOBCOMMAND="%job_command%"
+export CPR=2
+export CONFIGDIR=%config_dir%
+export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
+export USESCRATCH=%use_scratch%
+
+/mnt/research/devolab/dist_qsub/dist_longjob.sh
+"""
+
 script_template_checkpointing = """
 #!/bin/bash -login
 #PBS -q main
@@ -209,8 +252,11 @@ def strdiff(str1, str2):
             return i
 
 script_template = script_template_basic
-if options.checkpoint:
+if options.resuscitate:
+    script_template = script_template_checkpointing_resuscitate
+elif options.checkpoint:
     script_template = script_template_checkpointing
+
 
 script_template = script_template.replace( "%lstring%", ",".join(l_string))
 script_template = script_template.replace( "%lstring_spaces%", " ".join(l_string))
@@ -236,10 +282,19 @@ for command in processes:
     command_final = command_final.replace( "%job_seeds%", job_seeds)
 
     # clean up the target directories
+
     for i in range(job_ct + 1):
         jobtarget = settings['dest_dir'] + "/" + command[1] + "_" + str(start_seed + i)
         if os.path.exists(jobtarget):
-            os.system("mv " + jobtarget + " " + jobtarget + "_bak")
+            if options.resuscitate: ## in case of reviving the dead, make a backup
+                os.system("cp " + jobtarget + " " + jobtarget + "_bak")
+            else:
+                os.system("mv " + jobtarget + " " + jobtarget + "_bak")
+
+    if options.resuscitate:
+        ## clear the old done and dead array jobs lists
+        os.system("rm " + settings['dest_dir'] + "/" + command[1] + "_done_arrayjobs.txt")
+        os.system("rm " + settings['dest_dir'] + "/" + command[1] + "_dead_arrayjobs.txt")
 
     f = open("DELETE.ME", "w")
     f.write(command_final)
