@@ -53,13 +53,14 @@ else:
 settings = {}
 processes = []
 for line in fd:
+
+    if line.find('#') > -1:
+        line = line[:line.find('#')]
+
     line = line.strip().lstrip() ## strip off the leading and following whitespace. 
 
     if len(line) == 0 or line[0] == "#":
         continue
-
-    if line.find('#') > -1:
-        line = line[:line.find('#')]
 
     if (line[:3] == "set"):
         bits = line.split(" ");
