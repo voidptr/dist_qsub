@@ -91,13 +91,13 @@ for command in processes:
 
 l_string = []
 
-p_string = []
-if ('ppn' in settings.keys()):
-    p_string.append( "ppn=" + settings['ppn'] )
-if ('nodes' in settings.keys()):
-    p_string.append( "nodes=" + settings['nodes'] )
-if len(p_string) > 0:
-    l_string.append( ":".join(p_string) )
+#p_string = []
+#if ('ppn' in settings.keys()):
+#    p_string.append( "ppn=" + settings['ppn'] )
+#if ('nodes' in settings.keys()):
+#    p_string.append( "nodes=" + settings['nodes'] )
+#if len(p_string) > 0:
+#    l_string.append( ":".join(p_string) )
 
 feature = []
 if ('feature' in settings.keys()):
