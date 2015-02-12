@@ -97,7 +97,7 @@ if ('ppn' in settings.keys()):
 if ('nodes' in settings.keys()):
     p_string.append( "nodes=" + settings['nodes'] )
 if len(p_string) > 0:
-    lstring.append( ":".join(p_string) )
+    l_string.append( ":".join(p_string) )
 
 feature = []
 if ('feature' in settings.keys()):
