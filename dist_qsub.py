@@ -58,6 +58,9 @@ for line in fd:
     if len(line) == 0 or line[0] == "#":
         continue
 
+    if line.find('#') > -1:
+        line = line[:line.find('#')]
+
     if (line[:3] == "set"):
         bits = line.split(" ");
         settings[bits[1]] = bits[2];
@@ -89,9 +92,9 @@ l_string = []
 
 p_string = []
 if ('ppn' in settings.keys()):
-    pstring.append( "ppn=" + settings['ppn'] )
+    p_string.append( "ppn=" + settings['ppn'] )
 if ('nodes' in settings.keys()):
-    pstring.append( "nodes=" + settings['nodes'] )
+    p_string.append( "nodes=" + settings['nodes'] )
 if len(p_string) > 0:
     lstring.append( ":".join(p_string) )
 
