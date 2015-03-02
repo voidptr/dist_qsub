@@ -13,12 +13,12 @@ import time
 from os.path import expanduser
 
 # Set up options
-usage = """usage: %prog [options] [run_list] 
+usage = """usage: %prog [options] [run_list]
 
 In the run_list file, currently supported "set" options are:
 
   email - (required) the email address for HPCC messages (crashes only)
-  email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.  
+  email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.
   class_pref - supported classes 91, 92, 95, 150
   walltime - ints only, in hours
   mem_request - in gigabytes
@@ -33,7 +33,7 @@ parser.add_option("-p", "--printonly", action="store_true", dest="printonly",
                   default = False, help = "only print the qsub file (DELETE.ME), without submitting.")
 parser.add_option("-v", "--verbose", action = "store_true", dest = "verbose",
                   default = False, help = "print extra messages to stdout")
-parser.add_option("-d", "--debug_messages", action = "store_true", 
+parser.add_option("-d", "--debug_messages", action = "store_true",
                   dest = "debug_messages",
                   default = False, help = "print debug messages to stdout")
 parser.add_option("-c", "--checkpoint", action = "store_true",
@@ -57,7 +57,7 @@ for line in fd:
     if line.find('#') > -1:
         line = line[:line.find('#')]
 
-    line = line.strip().lstrip() ## strip off the leading and following whitespace. 
+    line = line.strip().lstrip() ## strip off the leading and following whitespace.
 
     if len(line) == 0 or line[0] == "#":
         continue
@@ -103,7 +103,7 @@ feature = []
 if ('feature' in settings.keys()):
     feature_str = settings['feature'].split(',')
     for ftr in feature_str:
-        feature.append("feature=" + ftr) 
+        feature.append("feature=" + ftr)
 
 if ('class_pref' in settings.keys()):
     if settings['class_pref'] == '91': # amd05
@@ -229,16 +229,25 @@ for command in processes:
     command_final = command_final.replace( "%job_command%", command[2] )
 
     job_seeds = ""
-    (start_seed, end_seed) = [ int(v) for v in command[0].split("..") ]
-    job_ct = end_seed - start_seed
-    job_seeds = "0-"+str(job_ct) # inclusive
+    start_seed = 0
+    job_ct = 0
+    if (".." in command[0]):
+        (start_seed, end_seed) = [ int(v) for v in command[0].split("..") ]
+        job_ct = end_seed - start_seed
+        job_seeds = "0-"+str(job_ct) # inclusive
 
-    if job_ct > 99999 or job_ct < 1:
-        exit("Seeds defined in " + command[0] + " are negative or invalid")
+        if job_ct > 99999 or job_ct < 1:
+            exit("Seeds defined in " + command[0] + " are negative or invalid")
 
-    command_final = command_final.replace( "%start_seed%", str(start_seed))
-    command_final = command_final.replace( "%job_seeds%", job_seeds)
+        command_final = command_final.replace( "%start_seed%", str(start_seed))
+        command_final = command_final.replace( "%job_seeds%", job_seeds)
+    else:
+        start_seed = int(command[0])
+        job_ct = 1
+        job_seeds = "0"
 
+        command_final = command_final.replace( "%start_seed%", str(start_seed))
+        command_final = command_final.replace( "%job_seeds%", job_seeds)
     # clean up the target directories
     for i in range(job_ct + 1):
         jobtarget = settings['dest_dir'] + "/" + command[1] + "_" + str(start_seed + i)
