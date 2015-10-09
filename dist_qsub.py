@@ -206,6 +206,7 @@ export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
 export DIST_QSUB_DIR=%dist_qsub_dir%
 export QSUB_FILE=%qsub_file%
+export MAX_QUEUE=%max_queue%
 
 %dist_qsub_dir%/dist_longjob.sh
 """
@@ -229,6 +230,7 @@ script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
 script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
+script_template = script_template.replace( "%max_queue%", options.max_queue)
 
 
 if not os.path.exists(dist_qsub_dir+"/qsub_files"):
@@ -278,6 +280,7 @@ for command in processes:
     
     if not options.printonly and submitted <= options.max_queue:
         print "Submitting: " + command[1]
+        
         os.system("qsub {0}".format(qsub_file))
     time.sleep(2)
     submitted += job_ct
