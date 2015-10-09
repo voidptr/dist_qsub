@@ -229,7 +229,8 @@ script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
 
 
-os.mkdir(dist_qsub_dir+"/qsub_files")
+if not os.path.exists(dist_qsub_dir+"/qsub_files"):
+    os.mkdir(dist_qsub_dir+"/qsub_files")
 
 submitted = 0
 
@@ -270,7 +271,7 @@ for command in processes:
     f.close()
 
     
-    if not options.printonly and submitted <= max_queue:
+    if not options.printonly and submitted <= options.max_queue:
         print "Submitting: " + command[1]
         os.system("qsub {0}".format(qsub_file))
     time.sleep(2)
