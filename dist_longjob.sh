@@ -33,6 +33,8 @@ echo CONFIGDIR $CONFIGDIR
 echo CPR $CPR
 echo EMAILSCRIPT $EMAILSCRIPT
 echo USESCRATCH $USESCRATCH
+echo DIST_QSUB_DIR $DIST_QSUB_DIR
+echo QSUB_FILE $QSUB_FILE
 
 ###### get the job going
 if [ $CPR -eq "0" ] ## initial
@@ -96,6 +98,7 @@ checkpoint_timeout() {
     fi
 
     # rename the context file
+
     mv context.${PID} checkpoint.blcr
 
     ## calculate what the successor job's name should be
@@ -155,11 +158,11 @@ checkpoint_timeout() {
     echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
     sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
 
-    # delete all the finished jobs we know about (for sanity)
-    #while read p || [[ -n $p ]] 
-    #do
-    #    qdel -t $p ${sid}[]
-    #done <${TARGETDIR}/${JOBNAME}_done_arrayjobs.txt
+    delete all the finished jobs we know about (for sanity)
+    while read p || [[ -n $p ]] 
+    do
+        qdel -t $p ${sid}[]
+    done <${TARGETDIR}/${QSUB_FILE}_done_arrayjobs.txt
 
     # send an un-hold message to our particular successor sub-job 
     echo "qrls -t $PBS_ARRAYID ${sid}[]"
@@ -210,15 +213,19 @@ $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 #	 qstat -f ${PBS_JOBID} | mail -s "JOB COMPLETE" ${USER}@msu.edu
 echo "Job completed with exit status ${RET}"
 
+echo "done" > ${QSUB_FILE}_done
+
 echo "Checking to see if there are more jobs that should be started"
+
+qstat -f ${PBS_JOBID} | grep "used"
+export RET
 
 cd ${PBS_O_WORKDIR}
 
 if [ ! -f finished.txt ] # If "finished.txt" exists, no more tasks need to be done
 then
     # submits the next job
-    python scheduler.py ${PBS_JOBID}
+    echo "Trying to submit another job"
+    python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
 fi
 
-qstat -f ${PBS_JOBID} | grep "used"
-export RET

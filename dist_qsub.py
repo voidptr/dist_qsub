@@ -204,6 +204,8 @@ export CPR=0
 export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
+export DIST_QSUB_DIR=%dist_qsub_dir%
+export QSUB_FILE=%qsub_file%
 
 %dist_qsub_dir%/dist_longjob.sh
 """
@@ -266,6 +268,9 @@ for command in processes:
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
     qsub_file = dist_qsub_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
+
+    command_final = command_final.replace("%qsub_file%", qsub_file)
+
     f = open(qsub_file, "w")
     f.write(command_final)
     f.close()
