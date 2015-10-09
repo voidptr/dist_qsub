@@ -1,5 +1,5 @@
 set description 100_TestingQsub 
-set email caninoko@msu.edu
+set email dolsonem@msu.edu
 set freq_email Crash
 set priority 1
 set class_pref 150 
@@ -8,7 +8,7 @@ set mem_request 0.5
 set config_dir config
 set max_cpus 90 
 set beacon_priority y
-set dest_dir /mnt/home/caninoko/tmp/qsub_dev/output/100
+set dest_dir /mnt/home/dolsonem/dist_qsub/test
 
 #Test A
 
