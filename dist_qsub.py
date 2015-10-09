@@ -38,6 +38,9 @@ parser.add_option("-d", "--debug_messages", action = "store_true",
                   default = False, help = "print debug messages to stdout")
 parser.add_option("-c", "--checkpoint", action = "store_true",
                   dest="checkpoint", default=True, help="apply checkpointing.")
+parser.add_option("-m", "--max-queue", action = "store",
+                  dest="max_queue", default=527, help="How many jobs should be
+                  queued before invoking additional scheduler?")
 ## fetch the args
 (options, args) = parser.parse_args()
 
@@ -50,6 +53,7 @@ if run_list[-3:] == ".gz":
 else:
     fd = open(run_list)
 
+dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
 settings = {}
 processes = []
 for line in fd:
@@ -201,7 +205,7 @@ export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
 
-/mnt/research/devolab/dist_qsub/dist_longjob.sh
+%dist_qsub_dir%/dist_longjob.sh
 """
 
 if not os.path.exists(settings['dest_dir']):
@@ -222,6 +226,12 @@ script_template = script_template.replace( "%email_address%", settings['email'])
 script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
 script_template = script_template.replace( "%config_dir%", config_dir )
+script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
+
+
+os.mkdir(dist_qsub_dir"/qsub_files")
+
+submitted = 0
 
 for command in processes:
     command_final = script_template
@@ -254,12 +264,16 @@ for command in processes:
         if os.path.exists(jobtarget):
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
-    f = open("DELETE.ME", "w")
+    qsub_file = dist_qsub_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
+    f = open(qsub_file, "w")
     f.write(command_final)
     f.close()
-    time.sleep(1)
 
-    if not options.printonly:
+    
+    if not options.printonly and submitted <= max_queue:
         print "Submitting: " + command[1]
-        os.system("qsub DELETE.ME")
+        os.system("qsub {0}".format(qsub_file))
     time.sleep(2)
+    submitted += job_ct
+
+
