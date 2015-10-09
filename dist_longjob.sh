@@ -209,5 +209,16 @@ qdel -t $PBS_ARRAYID ${sid}[]
 $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 #	 qstat -f ${PBS_JOBID} | mail -s "JOB COMPLETE" ${USER}@msu.edu
 echo "Job completed with exit status ${RET}"
+
+echo "Checking to see if there are more jobs that should be started"
+
+cd ${PBS_O_WORKDIR}
+
+if [ ! -f finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+then
+    # submits the next job
+    python scheduler.py ${PBS_JOBID}
+fi
+
 qstat -f ${PBS_JOBID} | grep "used"
 export RET
