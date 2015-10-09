@@ -41,10 +41,6 @@ echo MAX_QUEUE $MAX_QUEUE
 if [ $CPR -eq "0" ] ## initial
 then
     ## do the inital work
-
-    #Tell other jobs not to submit this job
-    echo "submitted" > ${QSUB_FILE}_done
-
     #change directory to the directory this was run from
     cd $PBS_O_WORKDIR
 
