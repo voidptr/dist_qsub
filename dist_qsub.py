@@ -39,8 +39,8 @@ parser.add_option("-d", "--debug_messages", action = "store_true",
 parser.add_option("-c", "--checkpoint", action = "store_true",
                   dest="checkpoint", default=True, help="apply checkpointing.")
 parser.add_option("-m", "--max-queue", action = "store",
-                  dest="max_queue", default=527, help="How many jobs should be
-                  queued before invoking additional scheduler?")
+                  dest="max_queue", default=527, 
+    help="How many jobs should be queued before invoking additional scheduler?")
 ## fetch the args
 (options, args) = parser.parse_args()
 
