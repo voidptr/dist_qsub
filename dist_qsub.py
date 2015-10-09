@@ -229,7 +229,7 @@ script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
 
 
-os.mkdir(dist_qsub_dir"/qsub_files")
+os.mkdir(dist_qsub_dir+"/qsub_files")
 
 submitted = 0
 
