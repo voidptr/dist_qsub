@@ -40,6 +40,10 @@ echo QSUB_FILE $QSUB_FILE
 if [ $CPR -eq "0" ] ## initial
 then
     ## do the inital work
+
+    #Tell other jobs not to submit this job
+    echo "submitted" > ${QSUB_FILE}_done
+
     #change directory to the directory this was run from
     cd $PBS_O_WORKDIR
 
@@ -158,11 +162,11 @@ checkpoint_timeout() {
     echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
     sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
 
-    delete all the finished jobs we know about (for sanity)
+    #delete all the finished jobs we know about (for sanity)
     while read p || [[ -n $p ]] 
     do
         qdel -t $p ${sid}[]
-    done <${TARGETDIR}/${QSUB_FILE}_done_arrayjobs.txt
+    done <${QSUB_FILE}_done_arrayjobs.txt
 
     # send an un-hold message to our particular successor sub-job 
     echo "qrls -t $PBS_ARRAYID ${sid}[]"
@@ -201,7 +205,7 @@ kill ${timeout} # prevent it from doing anything dumb.
 echo "Oh, hey, we finished before the timeout!"
 
 ## mark our job as being complete, so it gets cleaned up in later iterations.
-echo $seed >> $TARGETDIR/${JOBNAME}_done_arrayjobs.txt
+echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
 sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
@@ -213,7 +217,7 @@ $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 #	 qstat -f ${PBS_JOBID} | mail -s "JOB COMPLETE" ${USER}@msu.edu
 echo "Job completed with exit status ${RET}"
 
-echo "done" > ${QSUB_FILE}_done
+echo "done" >> ${QSUB_FILE}_done
 
 echo "Checking to see if there are more jobs that should be started"
 

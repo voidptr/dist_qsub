@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import os, shutil, glob
 
 dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
@@ -15,9 +17,6 @@ for line in run_list:
         break
 
 run_list.close()
-
-for filename in glob.glob(dest_dir+"/*done_arrayjobs.txt"):
-    os.remove(filename)
 
 for filename in glob.glob(dest_dir+"/*message.log*"):
     os.remove(filename)

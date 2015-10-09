@@ -62,7 +62,7 @@ if __name__ == "__main__":
     This is my example usage of the script. Everything from here down should
     be modified by YOU to fit your application.
     '''
-    import sys
+    import sys, os
     from glob import glob
     jobname = sys.argv[1]
 
@@ -73,8 +73,8 @@ if __name__ == "__main__":
     for qsub_file in glob(dist_qsub_dir+"/qsub_files/*.qsub"):
         if try_run(jobname, "qsub {0}".format(qsub_file), qsub_file+"_done"):
             print "Job Completed"
-                    # Remove the following line if you want a
-                    # single call to run multiple configurations
-                    sys.exit()
+            # Remove the following line if you want a
+            # single call to run multiple configurations
+            sys.exit()
     print "No jobs left to run, stopping resubmissions"
     open("finished.txt", 'w').close()

@@ -12,7 +12,7 @@ set dest_dir /mnt/home/dolsonem/dist_qsub/test
 
 #Test A
 
-#100001..100020 TestA echo "TestA ZOMG"
+100001..100020 TestA echo "TestA ZOMG"
 
 #Test B
 
@@ -35,5 +35,5 @@ set dest_dir /mnt/home/dolsonem/dist_qsub/test
 #116001..116030 TestRun ./avida -s $seed -set FORCED_MATE_PREFERENCE 0 -set EVENT_FILE events_I.cfg -set ENVIRONMENT_FILE environment_V_*.cfg -set DATA_DIR data__C_step1
 
 #Test G
-92 TestRunG ./avida -s $seed -set FORCED_MATE_PREFERENCE 0 -set EVENT_FILE events_I.cfg -set ENVIRONMENT_FILE environment_V_*.cfg -set DATA_DIR data__C_step1
+#92 TestRunG ~/avida/cbuild/work/avida -s $seed -set FORCED_MATE_PREFERENCE 0 -set EVENT_FILE events_I.cfg -set ENVIRONMENT_FILE environment_V_*.cfg -set DATA_DIR data__C_step1
 
