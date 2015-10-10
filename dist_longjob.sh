@@ -223,7 +223,7 @@ $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 echo "Job completed with exit status ${RET}"
 
 #create task finished file
-echo "done" >> ${QSUB_FILE}_done
+cp ${QSUB_FILE} ${QSUB_FILE}_done
 
 #remove lock file
 rm ${QSUB_FILE}_done.lock
