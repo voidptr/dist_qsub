@@ -220,7 +220,13 @@ $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 #	 qstat -f ${PBS_JOBID} | mail -s "JOB COMPLETE" ${USER}@msu.edu
 echo "Job completed with exit status ${RET}"
 
+#create task finished file
 echo "done" >> ${QSUB_FILE}_done
+
+#remove lock file
+rm ${QSUB_FILE}_done.lock
+#remove original qsub file so we don't have to keep trying to submit it
+rm ${QSUB_FILE}
 
 echo "Checking to see if there are more jobs that should be started"
 

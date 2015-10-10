@@ -23,7 +23,10 @@ def try_run(jobid, command, task_finished_file):
     '''
     lock_file = task_finished_file + ".lock"
     # Check if the task has already been done or if someone else is doing it.
-    if path.exists(task_finished_file) or path.exists(lock_file):
+    if path.exists(task_finished_file):
+        if path.exists(lock_file):
+            remove(lock_file)
+    elif path.exists(lock_file):
         return False
     # Attempt to grab the lock on this task
     with open(lock_file, 'w') as f:
@@ -42,9 +45,6 @@ def try_run(jobid, command, task_finished_file):
     call(command.split())
     # If the task was successful, remove the lock.
     # If the task failed, the lock must be removed manually. Prevents cascade failure. 
-    open(task_finished_file, "w").close()
-    if path.exists(task_finished_file):
-        remove(lock_file)
     return True
 
 def make_sure_folders_exists(filename):
