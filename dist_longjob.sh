@@ -37,6 +37,8 @@ echo DIST_QSUB_DIR $DIST_QSUB_DIR
 echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
+user=$(whoami)
+
 ###### get the job going
 if [ $CPR -eq "0" ] ## initial
 then
@@ -236,13 +238,15 @@ export RET
 cd ${PBS_O_WORKDIR}
 
 # Make sure not to submit too many jobs
-current_jobs=$(sq | tail -2 | head -1 | cut -d " " -f 4)
+current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
 
 if [ ! -f finished.txt ] # If "finished.txt" exists, no more tasks need to be done
 then
     # submits the next job
     if [ $current_jobs -lt $MAX_QUEUE ]
-    echo "Trying to submit another job"
-    python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
+    then
+	echo "Trying to submit another job"
+	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
+    fi
 fi
 

@@ -39,8 +39,8 @@ parser.add_option("-d", "--debug_messages", action = "store_true",
 parser.add_option("-c", "--checkpoint", action = "store_true",
                   dest="checkpoint", default=True, help="apply checkpointing.")
 parser.add_option("-m", "--max-queue", action = "store",
-                  dest="max_queue", default=527, 
-    help="How many jobs should be queued before invoking additional scheduler?")
+                  dest="max_queue", default=535, 
+    help="How many jobs should be queued beforeinvoking additional scheduler?")
 ## fetch the args
 (options, args) = parser.parse_args()
 
@@ -230,7 +230,7 @@ script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
 script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
-script_template = script_template.replace( "%max_queue%", options.max_queue)
+script_template = script_template.replace( "%max_queue%", str(options.max_queue))
 
 
 if not os.path.exists(dist_qsub_dir+"/qsub_files"):
