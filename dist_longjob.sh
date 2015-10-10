@@ -11,7 +11,7 @@
 ## Setup and Environment Variables
 
 # Set the default wait time to just under four hours
-export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 5 * 60 ))
+export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 6 * 60 ))
 #export BLCR_WAIT_SEC=60 # 90 seconds for testing
 
 # these variables must be passed in via qsub -v, or be exported in the environment
@@ -98,8 +98,14 @@ checkpoint_timeout() {
         exit 2
     fi
 
-    # rename the context file
+    #Make a copy of the checkpoint file so it doesn't get corrupted
+    #if bad things happen
+    if [ -f checkpoint.blcr ]
+    then
+	mv checkpoint.blcr checkpoint_safe.blcr
+    fi
 
+    # rename the context file
     mv context.${PID} checkpoint.blcr
 
     ## calculate what the successor job's name should be
@@ -136,8 +142,8 @@ checkpoint_timeout() {
 
                 corrected_lstring=`echo $LSTRING | tr " " ","`
 
-                echo qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" /mnt/research/devolab/dist_qsub/dist_longjob.sh
-                qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" /mnt/research/devolab/dist_qsub/dist_longjob.sh
+                echo qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" ${DIST_QSUB_DIR}/dist_longjob.sh
+                qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" ${DIST_QSUB_DIR}/dist_longjob.sh
 
                 sleep 10
 
