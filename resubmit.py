@@ -10,10 +10,19 @@ updates = "100000"
 if len(sys.argv) > 1:
     updates = sys.argv[1]
 
+cpr = 0
+if "--checkpoint" in sys.argv:
+    cpr = 1
+
 run_list = open("run_list", "wb")
 extinct = open("extinct", "wb")
 
-header = "set description conservation\nset email dolsonem@msu.edu\nset email_when final\nset class_pref 95\nset walltime 4\nset mem_request 4\nset config_dir configs\nset dest_dir " + os.getcwd() + "\n\n"
+header = "set description conservation\nset email dolsonem@msu.edu\nset email_when final\nset class_pref 95\nset walltime 4\nset mem_request 4\nset config_dir configs\nset dest_dir " + os.getcwd() + "\n"
+
+if cpr == 1:
+    header += "set cpr 1\n"
+
+header += "\n"
 
 run_list.write(header)
 
@@ -38,6 +47,10 @@ for run in run_logs:
                 continue
             
             print "resubmit: ", rep
+
+            #if os.path.exists(rep+"/checkpoint_safe.blcr"):
+            #    os.rename(rep+"/checkpoint_safe.blcr", rep+"/checkpoint.blcr")
+            
 
             split_condition = rep.split("_")
             seed = split_condition[-1]

@@ -81,6 +81,9 @@ if not "email" in settings.keys():
 if not "dest_dir" in settings.keys():
     parser.error("dest_dir must be defined in run_list")
 
+if not "cpr" in settings.keys():
+    settings["cpr"] = "0"
+
 for command in processes:
     bits = command[2].split(";")
     newcomm = []
@@ -200,7 +203,7 @@ export JOBSEEDS=%job_seeds%
 export DEST_DIR=%dest_dir%
 export LSTRING="%lstring_spaces%"
 export JOBCOMMAND="%job_command%"
-export CPR=0
+export CPR=%cpr%
 export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
@@ -231,6 +234,7 @@ script_template = script_template.replace( "%dest_dir%", dest_dir )
 script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
 script_template = script_template.replace( "%max_queue%", str(options.max_queue))
+script_template = script_template.replace( "%cpr%", settings["cpr"])
 
 
 if not os.path.exists(dist_qsub_dir+"/qsub_files"):
