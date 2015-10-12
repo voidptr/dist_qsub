@@ -43,7 +43,7 @@ for run in run_logs:
 
         if ud != updates:
             if pop == "0":
-                extinct.write(condition+"\n")
+                extinct.write(rep+"\n")
                 continue
             
             print "resubmit: ", rep
@@ -76,6 +76,7 @@ for run in run_logs:
 
                 
 for condition in conditions:
+    print condition
     seeds = conditions[condition]["seeds"]
     name = conditions[condition]["name"]
     command = conditions[condition]["command"]
@@ -83,14 +84,13 @@ for condition in conditions:
     seeds.sort()
     first = 0
     second = 0
-    while second < len(seeds)-1:
+    while second < len(seeds) and first < len(seeds):
         second = first
         while second < len(seeds) - 1 and int(seeds[second])+1 == int(seeds[second+1]):
-            if second >= len(seeds) - 1:
-                break
             second += 1
             
         #We have isolated a chunk of numbers
+        print first, seeds
         if second == first:
             run_list.write(seeds[first] + " " + name + " " + command + "\n")
         else:
