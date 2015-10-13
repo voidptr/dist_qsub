@@ -31,3 +31,9 @@ dist_qsub can now handle an indefinite number of jobs by maintaining a pool of j
 ```
 % python python path/to/dist_qsub/dist_qsub.py -p
 ```
+
+If you accidentally submit things that you didn't mean to, your directories will be stored in backup directories, ending in "_bak". To restore them to their original names, you can use the restore_backups script:
+```
+% python path/to/dist_qsub/restore_backups.sh
+```
+(run this from the directory containing the directories for all of your runs)
