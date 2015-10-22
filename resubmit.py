@@ -17,7 +17,7 @@ if "--checkpoint" in sys.argv:
 run_list = open("run_list", "wb")
 extinct = open("extinct", "wb")
 
-header = "set description conservation\nset email dolsonem@msu.edu\nset email_when final\nset class_pref 95\nset walltime 4\nset mem_request 4\nset config_dir configs\nset dest_dir " + os.getcwd() + "\n"
+header = "set description conservation\nset email dolsonem@msu.edu\nset email_when final\nset class_pref 95\nset walltime 4\nset mem_request 4\nset config_dir config\nset dest_dir " + os.getcwd() + "\n"
 
 if cpr == 1:
     header += "set cpr 1\n"
