@@ -43,9 +43,11 @@ user=$(whoami)
 if [ $CPR -eq "0" ] ## initial
 then
     ## do the inital work
-    #change directory to the directory this was run from
-    cd $PBS_O_WORKDIR
-    echo cd $PBS_O_WORKDIR
+    #We have no clue where this was actually submitted from, but we know
+    #the configdir is at the level below it
+    cd $CONFIGDIR
+    cd ..
+    echo cd $CONFIGDIR/..
 
     # create the directory where we will do our work
     mkdir $TARGETDIR/$JOBTARGET
