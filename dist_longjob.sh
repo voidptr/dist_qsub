@@ -241,12 +241,10 @@ echo "Checking to see if there are more jobs that should be started"
 qstat -f ${PBS_JOBID} | grep "used"
 export RET
 
-cd ${PBS_O_WORKDIR}
-
 # Make sure not to submit too many jobs
 current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
 
-if [ ! -f finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
 then
     # submits the next job
     if [ $current_jobs -lt $MAX_QUEUE ]

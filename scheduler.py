@@ -77,4 +77,4 @@ if __name__ == "__main__":
             # single call to run multiple configurations
             sys.exit()
     print "No jobs left to run, stopping resubmissions"
-    open("finished.txt", 'w').close()
+    open(dist_qsub_dir+"/finished.txt", 'w').close()

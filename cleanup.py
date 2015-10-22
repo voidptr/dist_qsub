@@ -4,8 +4,8 @@ import os, shutil, glob
 
 dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
 
-if os.path.exists("finished.txt"):
-    os.remove("finished.txt")
+if os.path.exists(dist_qsub_dir + "/finished.txt"):
+    os.remove(dist_qsub_dir + "/finished.txt")
 
 run_list = open("run_list")
 
