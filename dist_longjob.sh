@@ -45,9 +45,6 @@ then
     ## do the inital work
     #We have no clue where this was actually submitted from, but we know
     #the configdir is at the level below it
-    cd $CONFIGDIR
-    cd ..
-    echo cd $CONFIGDIR/..
 
     # create the directory where we will do our work
     mkdir $TARGETDIR/$JOBTARGET

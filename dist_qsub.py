@@ -135,6 +135,7 @@ config_dir = os.path.abspath(config_dir)
 
 dest_dir = settings['dest_dir']
 dest_dir.replace("~", expanduser("~"))
+dest_dir = os.path.abspath(dest_dir)
 
 if ('walltime' in settings.keys()):
     hours = int(float(settings['walltime']))
