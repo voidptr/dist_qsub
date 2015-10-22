@@ -45,15 +45,19 @@ then
     ## do the inital work
     #change directory to the directory this was run from
     cd $PBS_O_WORKDIR
+    echo cd $PBS_O_WORKDIR
 
     # create the directory where we will do our work
     mkdir $TARGETDIR/$JOBTARGET
+    echo mkdir $TARGETDIR/$JOBTARGET
 
     # copy the config dir
     cp -r ${CONFIGDIR}/* $TARGETDIR/$JOBTARGET
+    echo cp -r ${CONFIGDIR}/* $TARGETDIR/$JOBTARGET
 
     # head to the tmp directory on the node
     cd $TARGETDIR/$JOBTARGET
+    echo cd $TARGETDIR/$JOBTARGET
 
 
     # dump out the JOBCOMMAND
