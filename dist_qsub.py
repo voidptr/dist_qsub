@@ -10,7 +10,7 @@ import os
 from optparse import OptionParser
 import sys
 import time
-from os.path import expanduser
+from os.path import expanduser, abspath
 
 # Set up options
 usage = """usage: %prog [options] [run_list]
@@ -54,6 +54,7 @@ else:
     fd = open(run_list)
 
 dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
+
 settings = {}
 processes = []
 for line in fd:
@@ -129,6 +130,8 @@ config_dir = "config"
 if ('config_dir' in settings.keys()):
     config_dir = settings['config_dir']
     config_dir.replace("~", expanduser("~"))
+
+config_dir = os.path.abspath(config_dir)
 
 dest_dir = settings['dest_dir']
 dest_dir.replace("~", expanduser("~"))
