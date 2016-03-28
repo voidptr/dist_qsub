@@ -11,7 +11,7 @@
 ## Setup and Environment Variables
 
 # Set the default wait time to just under four hours
-export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 5 * 60 ))
+export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 6 * 60 ))
 #export BLCR_WAIT_SEC=60 # 90 seconds for testing
 
 # these variables must be passed in via qsub -v, or be exported in the environment
@@ -33,22 +33,30 @@ echo CONFIGDIR $CONFIGDIR
 echo CPR $CPR
 echo EMAILSCRIPT $EMAILSCRIPT
 echo USESCRATCH $USESCRATCH
+echo DIST_QSUB_DIR $DIST_QSUB_DIR
+echo QSUB_FILE $QSUB_FILE
+echo MAX_QUEUE $MAX_QUEUE
+
+user=$(whoami)
 
 ###### get the job going
 if [ $CPR -eq "0" ] ## initial
 then
     ## do the inital work
-    #change directory to the directory this was run from
-    cd $PBS_O_WORKDIR
+    #We have no clue where this was actually submitted from, but we know
+    #the configdir is at the level below it
 
     # create the directory where we will do our work
     mkdir $TARGETDIR/$JOBTARGET
+    echo mkdir $TARGETDIR/$JOBTARGET
 
     # copy the config dir
     cp -r ${CONFIGDIR}/* $TARGETDIR/$JOBTARGET
+    echo cp -r ${CONFIGDIR}/* $TARGETDIR/$JOBTARGET
 
     # head to the tmp directory on the node
     cd $TARGETDIR/$JOBTARGET
+    echo cd $TARGETDIR/$JOBTARGET
 
 
     # dump out the JOBCOMMAND
@@ -95,6 +103,13 @@ checkpoint_timeout() {
         exit 2
     fi
 
+    #Make a copy of the checkpoint file so it doesn't get corrupted
+    #if bad things happen
+    if [ -f checkpoint.blcr ]
+    then
+	mv checkpoint.blcr checkpoint_safe.blcr
+    fi
+
     # rename the context file
     mv context.${PID} checkpoint.blcr
 
@@ -132,8 +147,8 @@ checkpoint_timeout() {
 
                 corrected_lstring=`echo $LSTRING | tr " " ","`
 
-                echo qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" /mnt/research/devolab/dist_qsub/dist_longjob.sh
-                qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT" /mnt/research/devolab/dist_qsub/dist_longjob.sh
+                echo qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT",DIST_QSUB_DIR="${DIST_QSUB_DIR}",QSUB_FILE="${QSUB_FILE}",MAX_QUEUE="${MAX_QUEUE}" ${DIST_QSUB_DIR}/dist_longjob.sh
+                qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT",DIST_QSUB_DIR="${DIST_QSUB_DIR}",QSUB_FILE="${QSUB_FILE}",MAX_QUEUE="${MAX_QUEUE}" ${DIST_QSUB_DIR}/dist_longjob.sh
 
                 sleep 10
 
@@ -155,11 +170,11 @@ checkpoint_timeout() {
     echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
     sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
 
-    # delete all the finished jobs we know about (for sanity)
+    #delete all the finished jobs we know about (for sanity)
     while read p || [[ -n $p ]] 
     do
         qdel -t $p ${sid}[]
-    done <${TARGETDIR}/${JOBNAME}_done_arrayjobs.txt
+    done <${QSUB_FILE}_done_arrayjobs.txt
 
     # send an un-hold message to our particular successor sub-job 
     echo "qrls -t $PBS_ARRAYID ${sid}[]"
@@ -198,7 +213,7 @@ kill ${timeout} # prevent it from doing anything dumb.
 echo "Oh, hey, we finished before the timeout!"
 
 ## mark our job as being complete, so it gets cleaned up in later iterations.
-echo $PBS_ARRAYID >> $TARGETDIR/${JOBNAME}_done_arrayjobs.txt
+echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
 sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
@@ -209,5 +224,30 @@ qdel -t $PBS_ARRAYID ${sid}[]
 $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 #	 qstat -f ${PBS_JOBID} | mail -s "JOB COMPLETE" ${USER}@msu.edu
 echo "Job completed with exit status ${RET}"
+
+#create task finished file
+cp ${QSUB_FILE} ${QSUB_FILE}_done
+
+#remove lock file
+rm ${QSUB_FILE}_done.lock
+#remove original qsub file so we don't have to keep trying to submit it
+rm ${QSUB_FILE}
+
+echo "Checking to see if there are more jobs that should be started"
+
 qstat -f ${PBS_JOBID} | grep "used"
 export RET
+
+# Make sure not to submit too many jobs
+current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+
+if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+then
+    # submits the next job
+    if [ $current_jobs -lt $MAX_QUEUE ]
+    then
+	echo "Trying to submit another job"
+	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
+    fi
+fi
+

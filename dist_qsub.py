@@ -10,7 +10,7 @@ import os
 from optparse import OptionParser
 import sys
 import time
-from os.path import expanduser
+from os.path import expanduser, abspath
 
 # Set up options
 usage = """usage: %prog [options] [run_list]
@@ -38,6 +38,9 @@ parser.add_option("-d", "--debug_messages", action = "store_true",
                   default = False, help = "print debug messages to stdout")
 parser.add_option("-c", "--checkpoint", action = "store_true",
                   dest="checkpoint", default=True, help="apply checkpointing.")
+parser.add_option("-m", "--max-queue", action = "store",
+                  dest="max_queue", default=535, 
+    help="How many jobs should be queued beforeinvoking additional scheduler?")
 ## fetch the args
 (options, args) = parser.parse_args()
 
@@ -49,6 +52,8 @@ if run_list[-3:] == ".gz":
     fd = gzip.open(run_list)
 else:
     fd = open(run_list)
+
+dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
 
 settings = {}
 processes = []
@@ -76,6 +81,9 @@ if not "email" in settings.keys():
 
 if not "dest_dir" in settings.keys():
     parser.error("dest_dir must be defined in run_list")
+
+if not "cpr" in settings.keys():
+    settings["cpr"] = "0"
 
 for command in processes:
     bits = command[2].split(";")
@@ -123,8 +131,11 @@ if ('config_dir' in settings.keys()):
     config_dir = settings['config_dir']
     config_dir.replace("~", expanduser("~"))
 
+config_dir = os.path.abspath(config_dir)
+
 dest_dir = settings['dest_dir']
 dest_dir.replace("~", expanduser("~"))
+dest_dir = os.path.abspath(dest_dir)
 
 if ('walltime' in settings.keys()):
     hours = int(float(settings['walltime']))
@@ -196,12 +207,15 @@ export JOBSEEDS=%job_seeds%
 export DEST_DIR=%dest_dir%
 export LSTRING="%lstring_spaces%"
 export JOBCOMMAND="%job_command%"
-export CPR=0
+export CPR=%cpr%
 export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
+export DIST_QSUB_DIR=%dist_qsub_dir%
+export QSUB_FILE=%qsub_file%
+export MAX_QUEUE=%max_queue%
 
-/mnt/research/devolab/dist_qsub/dist_longjob.sh
+%dist_qsub_dir%/dist_longjob.sh
 """
 
 if not os.path.exists(settings['dest_dir']):
@@ -222,6 +236,15 @@ script_template = script_template.replace( "%email_address%", settings['email'])
 script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
 script_template = script_template.replace( "%config_dir%", config_dir )
+script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
+script_template = script_template.replace( "%max_queue%", str(options.max_queue))
+script_template = script_template.replace( "%cpr%", settings["cpr"])
+
+
+if not os.path.exists(dist_qsub_dir+"/qsub_files"):
+    os.mkdir(dist_qsub_dir+"/qsub_files")
+
+submitted = 0
 
 for command in processes:
     command_final = script_template
@@ -255,12 +278,21 @@ for command in processes:
         if os.path.exists(jobtarget):
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
-    f = open("DELETE.ME", "w")
+    qsub_file = dist_qsub_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
+
+    command_final = command_final.replace("%qsub_file%", qsub_file)
+
+    f = open(qsub_file, "w")
     f.write(command_final)
     f.close()
-    time.sleep(1)
 
-    if not options.printonly:
+    
+    if not options.printonly and submitted <= options.max_queue:
         print "Submitting: " + command[1]
-        os.system("qsub DELETE.ME")
+        os.system("qsub {0}".format(qsub_file))
+        with open(qsub_file+"_done.lock", "wb") as lockfile:
+            lockfile.write("submitted by dist_qsub")
     time.sleep(2)
+    submitted += job_ct
+
+
