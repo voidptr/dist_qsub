@@ -11,8 +11,8 @@
 ## Setup and Environment Variables
 
 # Set the default wait time to just under four hours
-export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 6 * 60 ))
-#export BLCR_WAIT_SEC=60 # 90 seconds for testing
+#export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 6 * 60 ))
+export BLCR_WAIT_SEC=60 # 90 seconds for testing
 
 # these variables must be passed in via qsub -v, or be exported in the environment
 # if calling dist_longjob.sh directly (not recommended).
