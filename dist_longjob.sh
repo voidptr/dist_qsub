@@ -26,6 +26,7 @@ echo seed $seed
 echo JOBTARGET $JOBTARGET
 echo JOBNAME $JOBNAME
 echo JOBSEEDS $JOBSEEDS
+echo JOBCT $JOBCT
 echo DEST_DIR $DEST_DIR
 echo LSTRING $LSTRING
 echo JOBCOMMAND $JOBCOMMAND
@@ -34,6 +35,7 @@ echo CPR $CPR
 echo EMAILSCRIPT $EMAILSCRIPT
 echo USESCRATCH $USESCRATCH
 echo DIST_QSUB_DIR $DIST_QSUB_DIR
+echo QSUB_FILES_DIR $QSUB_FILES_DIR
 echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
@@ -147,8 +149,8 @@ checkpoint_timeout() {
 
                 corrected_lstring=`echo $LSTRING | tr " " ","`
 
-                echo qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT",DIST_QSUB_DIR="${DIST_QSUB_DIR}",QSUB_FILE="${QSUB_FILE}",MAX_QUEUE="${MAX_QUEUE}" ${DIST_QSUB_DIR}/dist_longjob.sh
-                qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT",DIST_QSUB_DIR="${DIST_QSUB_DIR}",QSUB_FILE="${QSUB_FILE}",MAX_QUEUE="${MAX_QUEUE}" ${DIST_QSUB_DIR}/dist_longjob.sh
+                echo qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",JOBCT="${JOBCT}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT",DIST_QSUB_DIR="${DIST_QSUB_DIR}",QSUB_FILES_DIR="${QSUB_FILES_DIR}",QSUB_FILE="${QSUB_FILE}",MAX_QUEUE="${MAX_QUEUE}" ${DIST_QSUB_DIR}/dist_longjob.sh
+                qsub -h -l $corrected_lstring -N $sname -o ${DEST_DIR}/${JOBNAME}_message.log -t $JOBSEEDS -v STARTSEED="${STARTSEED}",TARGETDIR="${TARGETDIR}",JOBNAME="${JOBNAME}",DEST_DIR="${DEST_DIR}",JOBSEEDS="${JOBSEEDS}",JOBCT="${JOBCT}",LSTRING="$LSTRING",CPR=1,EMAILSCRIPT="$EMAILSCRIPT",DIST_QSUB_DIR="${DIST_QSUB_DIR}",QSUB_FILES_DIR="${QSUB_FILES_DIR}",QSUB_FILE="${QSUB_FILE}",MAX_QUEUE="${MAX_QUEUE}" ${DIST_QSUB_DIR}/dist_longjob.sh
 
                 sleep 10
 
@@ -194,10 +196,26 @@ echo "starting timer (${timeout}) for $BLCR_WAIT_SEC seconds"
 
 echo "Waiting on cr_run job: $PID"
 wait ${PID} 
+### THE LONG SLEEP
 RET=$?
 
+## FROM HERE ON IN...
+# Two things could have happened. Either the job was checkpointed (and thus ran all
+# the way up to the end of its alloted time). This means the checkpoint_timeout is 
+# probably running RIGHT NOW.
+# SEE CONDITION 1 BELOW
+##### OR #####
+# The job finished on its own before getting checkpointed.
+# SEE CONDITION 2 BELOW
+
+#################
+## CONDITION 1 ##
+#################
 
 #Check to see if job finished because it checkpointed
+# IF SO, THIS IS THE END OF THE LINE FOR OUR INTREPID SUB-JOB HEROES
+# If the job was checkpointed, then we EXIT HERE AND NOTHING ELSE BELOW THE IF HAPPENS
+# We trust that the checkpointing time-out process will resurrect (CPR) us on the other side.
 if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint 
 then
 	echo "Job seems to have been checkpointed, waiting for checkpoint_timeout to complete."
@@ -205,14 +223,18 @@ then
 	exit 0
 fi
 
-## JOB completed
+#################
+## CONDITION 2 ##
+#################
+## SUB-JOB completed ON ITS OWN ZOMG - CONFETTI!
 
-#Kill timeout timer 
+#Kill checkpointing timeout timer, we don't need to checkpoint shit.
 kill ${timeout} # prevent it from doing anything dumb.
+
 
 echo "Oh, hey, we finished before the timeout!"
 
-## mark our job as being complete, so it gets cleaned up in later iterations.
+## mark our sub-job as being complete, so it gets cleaned up in later iterations.
 echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
@@ -232,22 +254,29 @@ echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d
 echo "Deleting unneeded successor subjob:" $sid
 qdel -t $PBS_ARRAYID ${sid}[]
 
-#Email the user that the job has completed
+# Report to the email program that this sub-job has completed
+# THE EMAIL SCRIPT WILL DO ITS OWN SURVEY TO CHECK THAT ALL
+# SUB-JOBS are DONE.
 $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 #	 qstat -f ${PBS_JOBID} | mail -s "JOB COMPLETE" ${USER}@msu.edu
-echo "Job completed with exit status ${RET}"
+echo "Sub-Job completed with exit status ${RET}"
 
 ############ COMMENTED OUT FOR SAFETY ##################
 ## Don't expect that this will submit unsubmitted jobs #
 ########################################################
 
-#create task finished file
-#cp ${QSUB_FILE} ${QSUB_FILE}_done
-
-#remove lock file
-#rm ${QSUB_FILE}_done.lock
-#remove original qsub file so we don't have to keep trying to submit it
-#rm ${QSUB_FILE}
+### IF THE OVERALL JOB IS DONE (HOORAY!) KILL THE STUFFS
+#ct=`cat ${QSUB_FILE}_done_arrayjobs.txt | wc -l`
+#if [ "$ct" -eq "$JOBCT" ]
+#then
+#    #create task finished file
+#    cp ${QSUB_FILE} ${QSUB_FILE}_done
+#
+#    #remove lock file
+#    rm ${QSUB_FILE}_done.lock
+#    #remove original qsub file so we don't have to keep trying to submit it
+#    rm ${QSUB_FILE}
+#fi
 
 #echo "Checking to see if there are more jobs that should be started"
 
@@ -257,13 +286,14 @@ echo "Job completed with exit status ${RET}"
 # Make sure not to submit too many jobs
 #current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
 
-#if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+## DISABLED UNTIL WE FIGURE OUT IF THIS IS WORKING RIGHT
+#if [ ! -f $QSUB_FILES_DIR/${PBS_JOBID}_finished.txt ] # If "finished.txt" exists, no more tasks need to be done
 #then
 #    # submits the next job
 #    if [ $current_jobs -lt $MAX_QUEUE ]
-#    then#
+#    then
 #	echo "Trying to submit another job"
-#	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
+#	python $DIST_QSUB_DIR/scheduler.py "${QSUB_FILES_DIR}" "${DEST_DIR}" "${PBS_JOBID}"
 #    fi
 #fi
 
