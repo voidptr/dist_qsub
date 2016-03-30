@@ -64,17 +64,19 @@ if __name__ == "__main__":
     '''
     import sys, os
     from glob import glob
-    jobname = sys.argv[1]
+    qsub_files_dir = sys.argv[1]
+    dest_dir = sys.argv[2]
+    jobname = sys.argv[3]
 
-    dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
+#    dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
 
 
     # Iterate over each configuration I want to test
-    for qsub_file in glob(dist_qsub_dir+"/qsub_files/*.qsub"):
+    for qsub_file in glob(qsub_files_dir+"/*.qsub"):
         if try_run(jobname, "qsub {0}".format(qsub_file), qsub_file+"_done"):
             print "Job Completed"
             # Remove the following line if you want a
             # single call to run multiple configurations
             sys.exit()
     print "No jobs left to run, stopping resubmissions"
-    open(dist_qsub_dir+"/finished.txt", 'w').close()
+    open(dest_dir+"/finished.txt", 'w').close()

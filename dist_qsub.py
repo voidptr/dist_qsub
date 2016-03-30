@@ -150,6 +150,13 @@ email_when = "final"
 if 'email_when' in settings.keys() and settings['email_when'] == "always":
     email_when = "always"
 
+## set the location of the qsub_files database as dest_dir by default
+qsub_files_dir = dest_dir ## already absolute path
+if ('qsub_files_dir' in settings.keys()):
+    qsub_files_dir = settings['qsub_files_dir']
+    qsub_files_dir.replace("~", expanduser("~"))
+    qsub_files_dir = os.path.abspath(qsub_files_dir)
+
 
 script_template_basic = """
 #!/bin/bash -login
@@ -212,6 +219,7 @@ export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
 export DIST_QSUB_DIR=%dist_qsub_dir%
+export QSUB_FILES_DIR=%qsub_files_dir%
 export QSUB_FILE=%qsub_file%
 export MAX_QUEUE=%max_queue%
 
@@ -239,10 +247,10 @@ script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
 script_template = script_template.replace( "%max_queue%", str(options.max_queue))
 script_template = script_template.replace( "%cpr%", settings["cpr"])
+script_template = script_template.replace( "%qsub_files_dir%", qsub_files_dir )
 
-
-if not os.path.exists(dist_qsub_dir+"/qsub_files"):
-    os.mkdir(dist_qsub_dir+"/qsub_files")
+if not os.path.exists(qsub_files_dir):
+    os.mkdir(qsub_files_dir)
 
 submitted = 0
 
@@ -278,7 +286,7 @@ for command in processes:
         if os.path.exists(jobtarget):
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
-    qsub_file = dist_qsub_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
+    qsub_file = qsub_files_dir+"/"+str(command[1])+"_"+str(command[0]+".qsub")
 
     command_final = command_final.replace("%qsub_file%", qsub_file)
 
