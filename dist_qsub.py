@@ -281,7 +281,7 @@ for command in processes:
         command_final = command_final.replace( "%start_seed%", str(start_seed))
         command_final = command_final.replace( "%job_seeds%", job_seeds)
 
-    command_final = command_final.replace( "%job_ct%", job_ct )
+    command_final = command_final.replace( "%job_ct%", str(job_ct) )
 
     # clean up the target directories
     for i in range(job_ct):
