@@ -212,6 +212,7 @@ export JOBTARGET=%jobname%"_"$seed
 export JOBNAME=%jobname%
 export JOBSEEDS=%job_seeds%
 export DEST_DIR=%dest_dir%
+export JOBCT=%job_ct%
 export LSTRING="%lstring_spaces%"
 export JOBCOMMAND="%job_command%"
 export CPR=%cpr%
@@ -279,6 +280,8 @@ for command in processes:
 
         command_final = command_final.replace( "%start_seed%", str(start_seed))
         command_final = command_final.replace( "%job_seeds%", job_seeds)
+
+    command_final = command_final.replace( "%job_ct%", job_ct )
 
     # clean up the target directories
     for i in range(job_ct):
