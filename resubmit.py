@@ -9,6 +9,7 @@ from optparse import OptionParser
 parser = OptionParser()
 
 parser.add_option("-u", "--updates", action="store", dest="updates", default="100000", type="string", help="The number of updates each run should have gone for (default: 100000)")
+parser.add_option("-g", "--generations", action="store", dest="generations", default="", type="string", help="Base completion off of generations, and set expected number of generations each run should have gone for")
 parser.add_option("-r", "--reps", action="store", dest="reps", default=10, type="int", help="The number of random seeds runs per condition (default: 10)")
 parser.add_option("-c", "--checkpoint", action="store_true", dest="cpr", default=False, help="Restart from checkpoint? WARNING: Only resubmits runs with valid checkpoint")
 parser.add_option("-n", "--nocheckpoint", action="store_true", dest="nocpr", default=False, help="Only include runs without a checkpoint - i.e. those missed by running this with the -c flag")
@@ -16,7 +17,7 @@ parser.add_option("-i", "--infer-missing", action="store_true", dest="infer", de
 
 (options, args) = parser.parse_args()
 
-run_list = open("run_list", "wb")
+run_list = open("run_list_resubmit", "wb")
 extinct = open("extinct", "wb")
 
 header = "set description conservation\nset email dolsonem@msu.edu\nset email_when final\nset class_pref 95\nset walltime 4\nset mem_request 4\nset config_dir config\nset dest_dir " + os.getcwd() + "\n"
@@ -42,6 +43,7 @@ for run in run_logs:
         end = logfile.readlines()[-1].split()            
         pop = end[-1]
         ud = end[1]
+        gen = end[3]
 
         rep = run.split("/")[-2]
         split_condition = rep.split("_")
@@ -66,7 +68,7 @@ for run in run_logs:
 
             conditions[condition]["command"] = command
 
-        if ud != options.updates: 
+        if (options.generations == "" and ud != options.updates) or (options.generations != "" and float(options.generations) < float(options.generations)): 
             if pop == "0":
                 extinct_list.append(rep)
                 continue
