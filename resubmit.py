@@ -40,6 +40,7 @@ for run in run_logs:
         continue
 
     with open(run) as logfile:
+
         end = logfile.readlines()[-1].split()
         if len(end) < 6:
             print(end)
@@ -73,6 +74,7 @@ for run in run_logs:
             command_file.close()
 
             conditions[condition]["command"] = command
+
 
         if (options.generations == "" and ud != options.updates) or (options.generations != "" and float(gen) < float(options.generations)): 
             if pop == "0":
