@@ -62,7 +62,8 @@ for run in run_logs:
             command_file = open(rep+"/command.sh")
             command = command_file.readlines()[1]
             split_command = command.split()
-            split_command[2] = "$seed"
+            seed_ind = split_command.index("-s")
+            split_command[seed_ind+1] = "$seed"
             command = " ".join(split_command)
             command_file.close()
 
