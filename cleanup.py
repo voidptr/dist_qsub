@@ -1,13 +1,14 @@
 #!/usr/bin/python
 
-import os, shutil, glob
+import os, shutil, glob, sys
 
 dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
 
 if os.path.exists(dist_qsub_dir + "/finished.txt"):
     os.remove(dist_qsub_dir + "/finished.txt")
 
-run_list = open("run_list")
+rl_fpath = sys.argv[1]
+run_list = open(rl_fpath)
 
 dest_dir = ""
 
