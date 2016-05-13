@@ -33,7 +33,7 @@ parser.add_option("-l", "--run_list", action = "store", dest = "rl_file", defaul
 run_list = open("run_list_resubmit", "wb")
 extinct = open("extinct", "wb")
 
-default_header = "set description stepping_stones\nset email default@msu.edu\nset email_when final\nset class_pref 150\nset walltime 4\nset mem_request 4\nset config_dir configs\nset dest_dir " + os.getcwd() + "\n"
+default_header = "set description avida_experiment\nset email default@msu.edu\nset email_when final\nset walltime 4\nset mem_request 4\nset config_dir configs\nset dest_dir " + os.getcwd() + "\n"
 header = None
 if options.rl_file != None:
     try:
