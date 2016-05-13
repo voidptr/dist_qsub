@@ -4,14 +4,14 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option("-l", "--run_list", action = "store", dest = "rl_fpath", default = "run_list", help = "Use this to set a custom run_list file to use during cleanup.")
-
+(options, args) = parser.parse_args()
 
 dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
 
 if os.path.exists(dist_qsub_dir + "/finished.txt"):
     os.remove(dist_qsub_dir + "/finished.txt")
 
-run_list = open(rl_fpath)
+run_list = open(options.rl_fpath)
 
 dest_dir = ""
 
