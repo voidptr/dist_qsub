@@ -6,6 +6,18 @@ from optparse import OptionParser
 #early due to natural causes (i.e. the population went to 0), they are not
 #resubmitted and are instead recorded in the "extinct" file.
 
+def _build_header(rl_file):
+    """
+    Given a run_list file, grab and return the header. 
+    """
+    header = ""
+    with open(rl_file, "r") as fp:   
+        for line in fp:
+            if line == "\n": break
+            header += line
+    return header
+
+
 parser = OptionParser()
 
 parser.add_option("-u", "--updates", action="store", dest="updates", default="100000", type="string", help="The number of updates each run should have gone for (default: 100000)")
@@ -14,13 +26,21 @@ parser.add_option("-r", "--reps", action="store", dest="reps", default=10, type=
 parser.add_option("-c", "--checkpoint", action="store_true", dest="cpr", default=False, help="Restart from checkpoint? WARNING: Only resubmits runs with valid checkpoint")
 parser.add_option("-n", "--nocheckpoint", action="store_true", dest="nocpr", default=False, help="Only include runs without a checkpoint - i.e. those missed by running this with the -c flag")
 parser.add_option("-i", "--infer-missing", action="store_true", dest="infer", default=False, help="Use specified number of reps to find probably missing runs. Experimental.")
+parser.add_option("-l", "--run_list", action = "store", dest = "rl_file", default = None, help = "If set, use the provided run list file to build header.")
 
 (options, args) = parser.parse_args()
 
 run_list = open("run_list_resubmit", "wb")
 extinct = open("extinct", "wb")
 
-header = "set description conservation\nset email dolsonem@msu.edu\nset email_when final\nset class_pref 95\nset walltime 4\nset mem_request 4\nset config_dir config\nset dest_dir " + os.getcwd() + "\n"
+default_header = "set description stepping_stones\nset email default@msu.edu\nset email_when final\nset class_pref 150\nset walltime 4\nset mem_request 4\nset config_dir configs\nset dest_dir " + os.getcwd() + "\n"
+header = None
+if options.rl_file != None:
+    try:
+        header = _build_header(options.rl_file)
+    except:
+        print("Could not build header from provided run_list file. Using default.")
+        header = default_header
 
 if options.cpr == 1:
     header += "set cpr 1\n"
