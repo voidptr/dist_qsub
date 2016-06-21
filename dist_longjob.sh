@@ -216,7 +216,19 @@ echo "Oh, hey, we finished before the timeout!"
 echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
+# trim out the excess after the [ from the jobID
+echo "OUTER LOOP PREPPING TO DELETE UN-NEEDED SUBJOBS"
+trimmedid=`echo ${PBS_JOBID} | rev | cut -d[ -f2- | rev`
+echo "echo ${PBS_JOBID} | rev | cut -d[ -f2- | rev"
+echo trimmedid = $trimmedid
+# now, trim the completed name down to 16 characters because that's
+# what'll show up on qstat
+sname=`echo "${trimmedid}_${JOBNAME}" | cut -c 1-16`
+echo "echo "${trimmedid}_${JOBNAME}" | cut -c 1-16"
+echo sname = $sname
+
 sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
+echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
 echo "Deleting unneeded successor subjob:" $sid
 qdel -t $PBS_ARRAYID ${sid}[]
 
@@ -225,29 +237,33 @@ $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 #	 qstat -f ${PBS_JOBID} | mail -s "JOB COMPLETE" ${USER}@msu.edu
 echo "Job completed with exit status ${RET}"
 
+############ COMMENTED OUT FOR SAFETY ##################
+## Don't expect that this will submit unsubmitted jobs #
+########################################################
+
 #create task finished file
-cp ${QSUB_FILE} ${QSUB_FILE}_done
+#cp ${QSUB_FILE} ${QSUB_FILE}_done
 
 #remove lock file
-rm ${QSUB_FILE}_done.lock
+#rm ${QSUB_FILE}_done.lock
 #remove original qsub file so we don't have to keep trying to submit it
-rm ${QSUB_FILE}
+#rm ${QSUB_FILE}
 
-echo "Checking to see if there are more jobs that should be started"
+#echo "Checking to see if there are more jobs that should be started"
 
-qstat -f ${PBS_JOBID} | grep "used"
-export RET
+#qstat -f ${PBS_JOBID} | grep "used"
+#export RET
 
 # Make sure not to submit too many jobs
-current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+#current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
 
-if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
-then
-    # submits the next job
-    if [ $current_jobs -lt $MAX_QUEUE ]
-    then
-	echo "Trying to submit another job"
-	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
-    fi
-fi
+#if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+#then
+#    # submits the next job
+#    if [ $current_jobs -lt $MAX_QUEUE ]
+#    then#
+#	echo "Trying to submit another job"
+#	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
+#    fi
+#fi
 
