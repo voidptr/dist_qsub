@@ -254,6 +254,7 @@ echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d
 echo "Deleting unneeded successor subjob:" $sid
 qdel -t $PBS_ARRAYID ${sid}[]
 
+
 # Report to the email program that this sub-job has completed
 # THE EMAIL SCRIPT WILL DO ITS OWN SURVEY TO CHECK THAT ALL
 # SUB-JOBS are DONE.
