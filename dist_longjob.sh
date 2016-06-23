@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #DESCRIPTION checkpoint restart for long jobs, and batching of subsequent jobs into arrays
 #
 # Inspired by longjob, written by Dirk Colbry
@@ -12,7 +12,7 @@
 
 # Set the default wait time to just under four hours
 export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 6 * 60 ))
-#export BLCR_WAIT_SEC=60 # 90 seconds for testing
+#export BLCR_WAIT_SEC=30 # 90 seconds for testing
 
 # these variables must be passed in via qsub -v, or be exported in the environment
 # if calling dist_longjob.sh directly (not recommended).
@@ -70,9 +70,9 @@ then
     export PID=$!
 
 else ## restart an existing job!
-    
+
     # go to the final location, where we should've stashed our checkpoint
-    cd $TARGETDIR/$JOBTARGET 
+    cd $TARGETDIR/$JOBTARGET
 
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
@@ -107,7 +107,7 @@ checkpoint_timeout() {
     #if bad things happen
     if [ -f checkpoint.blcr ]
     then
-	mv checkpoint.blcr checkpoint_safe.blcr
+	     mv checkpoint.blcr checkpoint_safe.blcr
     fi
 
     # rename the context file
@@ -171,12 +171,13 @@ checkpoint_timeout() {
     sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
 
     #delete all the finished jobs we know about (for sanity)
-    while read p || [[ -n $p ]] 
+    while read p || [[ -n $p ]]
     do
+        echo qdel -t $p ${sid}[]
         qdel -t $p ${sid}[]
     done <${QSUB_FILE}_done_arrayjobs.txt
 
-    # send an un-hold message to our particular successor sub-job 
+    # send an un-hold message to our particular successor sub-job
     echo "qrls -t $PBS_ARRAYID ${sid}[]"
     qrls -t $PBS_ARRAYID ${sid}[]
 }
@@ -193,12 +194,12 @@ timeout=$!
 echo "starting timer (${timeout}) for $BLCR_WAIT_SEC seconds"
 
 echo "Waiting on cr_run job: $PID"
-wait ${PID} 
+wait ${PID}
 RET=$?
 
 
 #Check to see if job finished because it checkpointed
-if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint 
+if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint
 then
 	echo "Job seems to have been checkpointed, waiting for checkpoint_timeout to complete."
 	wait ${timeout}
@@ -207,7 +208,7 @@ fi
 
 ## JOB completed
 
-#Kill timeout timer 
+#Kill timeout timer
 kill ${timeout} # prevent it from doing anything dumb.
 
 echo "Oh, hey, we finished before the timeout!"
@@ -266,4 +267,3 @@ echo "Job completed with exit status ${RET}"
 #	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
 #    fi
 #fi
-
