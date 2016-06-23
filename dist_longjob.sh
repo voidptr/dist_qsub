@@ -238,9 +238,15 @@ echo "Oh, hey, we finished before the timeout!"
 echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
+echo "DELETING THE SUCCESSOR JOBS -- Prep"
+echo $sname
 sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
+#echo "sid=\`qstat -u $PBS_O_LOGNAME | grep \"$sname\" | awk \'{print \$1}\' | rev | cut -d[ -f2- | rev\`"
+echo $sid
+
 echo "Deleting unneeded successor subjob:" $sid
 qdel -t $PBS_ARRAYID ${sid}[]
+
 
 # Report to the email program that this sub-job has completed
 # THE EMAIL SCRIPT WILL DO ITS OWN SURVEY TO CHECK THAT ALL

@@ -32,6 +32,6 @@ set dest_dir /mnt/research/devolab/dist_qsub_dev/testing_output
 #92 TestRunG ~/avida/cbuild/work/avida -s $seed -set FORCED_MATE_PREFERENCE 0 -set EVENT_FILE events_I.cfg -set ENVIRONMENT_FILE environment_V_*.cfg -set DATA_DIR data__C_step1
 
 #Testing an arbitrarily-long process
-50..100 Arb python ./testing.py $seed
+150..200 Arb python ./testing.py $seed
 
 
