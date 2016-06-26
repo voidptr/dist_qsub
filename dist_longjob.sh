@@ -182,6 +182,7 @@ checkpoint_timeout() {
     qrls -t $PBS_ARRAYID ${sid}[]
 
     #delete all the finished jobs we know about (for sanity)
+    echo "Deleting all other unneeded successor subjobs."
     while read j || [[ -n $j ]]
     do
         while read p || [[ -n $p ]]
@@ -260,11 +261,15 @@ echo "Deleting unneeded successor subjob:" $sid
 qdel -t $PBS_ARRAYID ${sid}[]
 
 #delete all the finished jobs we know about (for sanity)
-while read p || [[ -n $p ]]
+echo "Deleting all other unneeded successor subjobs."
+while read j || [[ -n $j ]]
 do
-    echo qdel -t $p ${sid}[]
-    qdel -t $p ${sid}[]
-done <${QSUB_FILE}_done_arrayjobs.txt
+    while read p || [[ -n $p ]]
+    do
+        echo qdel -t $p ${sid}[]
+        qdel -t $p ${sid}[]
+    done <${QSUB_FILE}_done_arrayjobs.txt
+done <${QSUB_FILE}_successor_jobs.txt
 
 #Notify the email script that we're done.
 # If all sub-jobs are done, it'll email the user that
