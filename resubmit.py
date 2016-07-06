@@ -42,6 +42,9 @@ if options.rl_file != None:
         print("Could not build header from provided run_list file. Using default.")
         header = default_header
 
+if not header:
+    header = default_header
+
 if options.cpr == 1:
     header += "set cpr 1\n"
 
@@ -103,7 +106,15 @@ for run in run_logs:
                 continue
         
             if os.path.exists(rep+"/checkpoint_safe.blcr") and options.cpr:
-                shutil.copy(rep+"/checkpoint_safe.blcr", rep+"/checkpoint.blcr")
+                try:
+                    shutil.copy(rep+"/checkpoint_safe.blcr", rep+"/checkpoint.blcr")
+                except IOError: 
+                    '''Note: Technically we should check if e.errno==EACCES
+                    or switch to py3 to use PermissionError'''
+                    print "Not resubmitting", rep, "because don't have permission."
+                    not_resubmitted.append(rep)
+                    continue
+                    
             elif options.cpr:
                 print "Not resubmitting", rep, "because there's no checkpoint."
                 not_resubmitted.append(rep)
