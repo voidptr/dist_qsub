@@ -59,6 +59,6 @@ WARNING: `resubmit.py` is only intended to be used when runs died because of a c
 
 If you accidentally submit things that you didn't mean to, your directories will be stored in backup directories, ending in "_bak". To restore them to their original names, you can use the restore_backups script:
 ```
-% python path/to/dist_qsub/restore_backups.sh
+% path/to/dist_qsub/restore_backups.sh
 ```
 (run this from the directory containing the directories for all of your runs)
