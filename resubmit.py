@@ -65,7 +65,7 @@ for run in run_logs:
     with open(run) as logfile:
 
         end = logfile.readlines()[-1].split()
-        if len(end) < 6:
+        if len(end) < 6 and end[0] == "UD:":
             print(end)
             pop = 1 #all that matters is it's not 0
             ud = 0
@@ -99,7 +99,7 @@ for run in run_logs:
 
             conditions[condition]["command"] = command
 
-
+        
         if (options.generations == "" and ud != options.updates) or (options.generations != "" and float(gen) < float(options.generations)): 
             if pop == "0":
                 extinct_list.append(rep)
