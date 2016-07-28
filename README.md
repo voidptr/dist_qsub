@@ -12,6 +12,7 @@ To run:
 % python ./dist_qsub.py [run_list]
 ```
 
+<!--
 To clean up after a run (critical if you're re-submitting jobs):
 ```
 % python path/to/dist_qsub/cleanup.py
@@ -62,3 +63,5 @@ If you accidentally submit things that you didn't mean to, your directories will
 % python path/to/dist_qsub/restore_backups.sh
 ```
 (run this from the directory containing the directories for all of your runs)
+
+-->
