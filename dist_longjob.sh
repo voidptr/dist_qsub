@@ -235,6 +235,13 @@ fi
 echo "Sub-job seems to have finished. Here's the return code: "
 echo ${RET}
 
+if [ "${RET}" = "132" ] #Job terminated due to cr_checkpoint
+then
+	echo "CRASH - Job seems to have crashed, but it's unclear how."
+    echo "TODO -- add some kind of crash recovery."
+fi
+
+
 #Kill timeout timer
 kill ${timeout} # prevent it from doing anything dumb.
 
@@ -257,8 +264,15 @@ echo sname = $sname
 
 sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
 echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
-echo "Deleting unneeded successor subjob:" $sid
-qdel -t $PBS_ARRAYID ${sid}[]
+echo Found Successor ID: $sid
+if [ -n "$sid" ]
+then
+    echo "Deleting unneeded successor subjob:" $sid
+    echo qdel -t $PBS_ARRAYID ${sid}[]
+    qdel -t $PBS_ARRAYID ${sid}[]
+else
+    echo "No successor job found."
+fi
 
 #delete all the finished jobs we know about (for sanity)
 echo "Deleting all other unneeded successor subjobs."
@@ -266,8 +280,8 @@ while read j || [[ -n $j ]]
 do
     while read p || [[ -n $p ]]
     do
-        echo qdel -t $p ${sid}[]
-        qdel -t $p ${sid}[]
+        echo qdel -t $p $j[]
+        qdel -t $p $j[]
     done <${QSUB_FILE}_done_arrayjobs.txt
 done <${QSUB_FILE}_successor_jobs.txt
 
