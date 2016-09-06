@@ -73,7 +73,7 @@ if __name__ == "__main__":
         qsub_dir = sys.argv[2]
 
     # Iterate over each configuration I want to test
-    for qsub_file in glob(qsub_dir+"/qsub_files/*.qsub"):
+    for qsub_file in glob(qsub_dir+"/*.qsub"):
         if try_run(jobname, "qsub {0}".format(qsub_file), qsub_file+"_done"):
             print "Job Completed"
             # Remove the following line if you want a
