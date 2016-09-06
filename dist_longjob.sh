@@ -314,8 +314,8 @@ if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks nee
 then
     # submits the next job
     if [ $current_jobs -lt $MAX_QUEUE ]
-    then#
-	echo "Trying to submit another job"
-	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
-  fi
+    then
+	     echo "Trying to submit another job"
+	     python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
+    fi
 fi
