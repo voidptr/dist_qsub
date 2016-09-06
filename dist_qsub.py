@@ -243,6 +243,9 @@ script_template = script_template.replace( "%max_queue%", str(options.max_queue)
 script_template = script_template.replace( "%cpr%", settings["cpr"])
 
 
+if not os.path.exists(dest_dir):
+    os.mkdir(dest_dir)
+
 if not os.path.exists(dest_dir+"/qsub_files"):
     os.mkdir(dest_dir+"/qsub_files")
 
