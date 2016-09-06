@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #DESCRIPTION checkpoint restart for long jobs, and batching of subsequent jobs into arrays
 #
 # Inspired by longjob, written by Dirk Colbry
@@ -12,7 +12,7 @@
 
 # Set the default wait time to just under four hours
 export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 6 * 60 ))
-#export BLCR_WAIT_SEC=60 # 90 seconds for testing
+#export BLCR_WAIT_SEC=30 # 90 seconds for testing
 
 # these variables must be passed in via qsub -v, or be exported in the environment
 # if calling dist_longjob.sh directly (not recommended).
@@ -70,9 +70,9 @@ then
     export PID=$!
 
 else ## restart an existing job!
-    
+
     # go to the final location, where we should've stashed our checkpoint
-    cd $TARGETDIR/$JOBTARGET 
+    cd $TARGETDIR/$JOBTARGET
 
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
@@ -80,8 +80,6 @@ else ## restart an existing job!
     cr_restart --no-restore-pid --file checkpoint.blcr >> run.log 2>&1 &
     PID=$!
 fi
-
-echo $LSTRING >> lstring.out
 
 copy_out() {
     tar czf dist_transfer.tar.gz .
@@ -107,7 +105,7 @@ checkpoint_timeout() {
     #if bad things happen
     if [ -f checkpoint.blcr ]
     then
-	mv checkpoint.blcr checkpoint_safe.blcr
+	     mv checkpoint.blcr checkpoint_safe.blcr
     fi
 
     # rename the context file
@@ -144,6 +142,7 @@ checkpoint_timeout() {
             if [ `ls $TARGETDIR/$sname.* | sort | head -1` == $TARGETDIR/$sname.${PBS_ARRAYID} ]
             then
                 ## it's me!
+                echo "WON THE RACE"
 
                 corrected_lstring=`echo $LSTRING | tr " " ","`
 
@@ -153,6 +152,14 @@ checkpoint_timeout() {
                 sleep 10
 
                 rm $TARGETDIR/$sname.* # clean up
+
+                ### Grab the ID of the job we just made and stuff it into the jobs file
+                ### It won't include the current job ID if it was the original submitted job
+                ### TODO -- add this to the dist_qsub.py script.
+                echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
+                mysid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
+                echo $mysid >> ${QSUB_FILE}_successor_jobs.txt
+
             else
                 # oop, lost the race
                 echo "Lost the race, letting winner do the thing."
@@ -170,19 +177,25 @@ checkpoint_timeout() {
     echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
     sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
 
-    #delete all the finished jobs we know about (for sanity)
-    while read p || [[ -n $p ]] 
-    do
-        qdel -t $p ${sid}[]
-    done <${QSUB_FILE}_done_arrayjobs.txt
-
-    # send an un-hold message to our particular successor sub-job 
+    # send an un-hold message to our particular successor sub-job
     echo "qrls -t $PBS_ARRAYID ${sid}[]"
     qrls -t $PBS_ARRAYID ${sid}[]
+
+    #delete all the finished jobs we know about (for sanity)
+    echo "Deleting all other unneeded successor subjobs."
+    while read j || [[ -n $j ]]
+    do
+        while read p || [[ -n $p ]]
+        do
+            echo qdel -t $p ${sid}[]
+            qdel -t $p ${sid}[]
+        done <${QSUB_FILE}_done_arrayjobs.txt
+    done <${QSUB_FILE}_successor_jobs.txt
+
+    echo "Done with Timeout and Checkpoint Processing"
 }
 
-
-# set checkpoint timeout, which will go in the background.
+# begin checkpoint timeout, which will go in the background.
 # This will run if the job didn't finish before the timer runs out.
 # Because the timeout kills the job, the wait ${PID} below will return.
 # Even after the wait ${PID} below returns, the timeout may still be going,
@@ -193,61 +206,120 @@ timeout=$!
 echo "starting timer (${timeout}) for $BLCR_WAIT_SEC seconds"
 
 echo "Waiting on cr_run job: $PID"
-wait ${PID} 
+echo "ZZzzzzz"
+wait ${PID}
 RET=$?
 
+###############################################################################
+############### NOW WE WAIT ###################################################
+###############################################################################
 
-#Check to see if job finished because it checkpointed
-if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint 
+# Ooh, we're executing again. Something musta happened.
+# Check to see if we're moving along again because the job checkpointed
+if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint
 then
-	echo "Job seems to have been checkpointed, waiting for checkpoint_timeout to complete."
-	wait ${timeout}
-	exit 0
+	echo "AWAKE - Job seems to have been checkpointed, waiting for checkpoint_timeout function to finish processing."
+  wait ${timeout}
+  echo "See you next time around..."
+  exit 0
 fi
 
-## JOB completed
+# ELSE:
+######################### JOB COMPLETED ##############################
+# We're actually executing again because the job finished (no checkpointing).
+# This could happen for a couple reasons.
+#    1. Either the job legit finished,
+#    2. The job crashed on checkpoint restart, as in, it never started up. :(
+# Either way, we have some cleanup to do. :/
 
-#Kill timeout timer 
+echo "Sub-job seems to have finished. Here's the return code: "
+echo ${RET}
+
+if [ "${RET}" = "132" ] #Job terminated due to cr_checkpoint
+then
+	echo "CRASH - Job seems to have crashed, but it's unclear how."
+    echo "TODO -- add some kind of crash recovery."
+fi
+
+
+#Kill timeout timer
 kill ${timeout} # prevent it from doing anything dumb.
 
-echo "Oh, hey, we finished before the timeout!"
+echo "Cleanup time"
 
 ## mark our job as being complete, so it gets cleaned up in later iterations.
 echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
+# trim out the excess after the [ from the jobID
+echo "Cleanup - PREPPING TO DELETE UN-NEEDED SUBJOBS"
+trimmedid=`echo ${PBS_JOBID} | rev | cut -d[ -f2- | rev`
+echo "echo ${PBS_JOBID} | rev | cut -d[ -f2- | rev"
+echo trimmedid = $trimmedid
+# now, trim the completed name down to 16 characters because that's
+# what'll show up on qstat
+sname=`echo "${trimmedid}_${JOBNAME}" | cut -c 1-16`
+echo "echo "${trimmedid}_${JOBNAME}" | cut -c 1-16"
+echo sname = $sname
+
 sid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
-echo "Deleting unneeded successor subjob:" $sid
-qdel -t $PBS_ARRAYID ${sid}[]
-
-#Email the user that the job has completed
-$EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
-#	 qstat -f ${PBS_JOBID} | mail -s "JOB COMPLETE" ${USER}@msu.edu
-echo "Job completed with exit status ${RET}"
-
-#create task finished file
-cp ${QSUB_FILE} ${QSUB_FILE}_done
-
-#remove lock file
-rm ${QSUB_FILE}_done.lock
-#remove original qsub file so we don't have to keep trying to submit it
-rm ${QSUB_FILE}
-
-echo "Checking to see if there are more jobs that should be started"
-
-qstat -f ${PBS_JOBID} | grep "used"
-export RET
-
-# Make sure not to submit too many jobs
-current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
-
-if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
+echo Found Successor ID: $sid
+if [ -n "$sid" ]
 then
-    # submits the next job
-    if [ $current_jobs -lt $MAX_QUEUE ]
-    then
-	echo "Trying to submit another job"
-	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
-    fi
+    echo "Deleting unneeded successor subjob:" $sid
+    echo qdel -t $PBS_ARRAYID ${sid}[]
+    qdel -t $PBS_ARRAYID ${sid}[]
+else
+    echo "No successor job found."
 fi
 
+#delete all the finished jobs we know about (for sanity)
+echo "Deleting all other unneeded successor subjobs."
+while read j || [[ -n $j ]]
+do
+    while read p || [[ -n $p ]]
+    do
+        echo qdel -t $p $j[]
+        qdel -t $p $j[]
+    done <${QSUB_FILE}_done_arrayjobs.txt
+done <${QSUB_FILE}_successor_jobs.txt
+
+#Notify the email script that we're done.
+# If all sub-jobs are done, it'll email the user that
+# the job has completed
+$EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
+echo "Sub-job completed with exit status ${RET}"
+
+
+############ COMMENTED OUT FOR SAFETY ##################
+## Don't expect that this will submit unsubmitted jobs #
+## The below doesn't do what you think it does.        #
+########################################################
+
+#create task finished file
+#cp ${QSUB_FILE} ${QSUB_FILE}_done
+
+#remove lock file
+#rm ${QSUB_FILE}_done.lock
+#remove original qsub file so we don't have to keep trying to submit it
+#rm ${QSUB_FILE}
+
+
+#echo "Checking to see if there are more jobs that should be started"
+
+#qstat -f ${PBS_JOBID} | grep "used"
+#export RET
+
+# Make sure not to submit too many jobs
+#current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+
+#if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+#then
+#    # submits the next job
+#    if [ $current_jobs -lt $MAX_QUEUE ]
+#    then#
+#	echo "Trying to submit another job"
+#	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
+#    fi
+#fi

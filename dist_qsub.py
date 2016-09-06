@@ -39,7 +39,7 @@ parser.add_option("-d", "--debug_messages", action = "store_true",
 parser.add_option("-c", "--checkpoint", action = "store_true",
                   dest="checkpoint", default=True, help="apply checkpointing.")
 parser.add_option("-m", "--max-queue", action = "store",
-                  dest="max_queue", default=535, 
+                  dest="max_queue", default=535,
     help="How many jobs should be queued beforeinvoking additional scheduler?")
 ## fetch the args
 (options, args) = parser.parse_args()
@@ -273,7 +273,7 @@ for command in processes:
         command_final = command_final.replace( "%job_seeds%", job_seeds)
 
     # clean up the target directories
-    for i in range(job_ct):
+    for i in range(job_ct+1):
         jobtarget = settings['dest_dir'] + "/" + command[1] + "_" + str(start_seed + i)
         if os.path.exists(jobtarget):
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
@@ -282,17 +282,18 @@ for command in processes:
 
     command_final = command_final.replace("%qsub_file%", qsub_file)
 
-    f = open(qsub_file, "w")
-    f.write(command_final)
-    f.close()
-
-    
     if not options.printonly and submitted <= options.max_queue:
+
         print "Submitting: " + command[1]
+        os.system("rm {0}*".format(qsub_file))
+
+        f = open(qsub_file, "w")
+        f.write(command_final)
+        f.close()
+
         os.system("qsub {0}".format(qsub_file))
+
         with open(qsub_file+"_done.lock", "wb") as lockfile:
             lockfile.write("submitted by dist_qsub")
     time.sleep(2)
     submitted += job_ct
-
-
