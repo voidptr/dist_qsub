@@ -1,8 +1,12 @@
 #!/usr/bin/python
+import os, shutil, glob, sys
+from optparse import OptionParser
 
-import os, shutil, glob
+parser = OptionParser()
+parser.add_option("-l", "--run_list", action = "store", dest = "rl_fpath", default = "run_list", help = "Use this to set a custom run_list file to use during cleanup.")
+(options, args) = parser.parse_args()
 
-run_list = open("run_list")
+run_list = open(options.rl_fpath)
 
 dest_dir = ""
 

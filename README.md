@@ -3,32 +3,31 @@ dist_qsub
 
 HPCC DevoLab dist_run replacement
 
-Before running, make sure a run_list file is in the directory along with a "config/" 
-directory with the content of the run. This is the same setup as the old dist_run 
+Before running, make sure a run_list file is in the directory along with a "config/"
+directory with the content of the run. This is the same setup as the old dist_run
 method.
 
-To run: 
+To run:
 ```
 % python ./dist_qsub.py [run_list]
 ```
 
-<!--
 To clean up after a run (critical if you're re-submitting jobs):
 ```
 % python path/to/dist_qsub/cleanup.py
 ```
 
-(do this from the location you submitted the jobs from)
+(do this from the directory containing your run_list, the directory containing your results, or use -l to specify the path to your run_list)
 
 dist_qsub can now handle an indefinite number of jobs by maintaining a pool of jobs to submit when space opens up. To add things to this pool when you've already got jobs running, put the new jobs into a run_list file and submit them (from the same directory you submitted the first set of jobs from) with:
 ```
 % python path/to/dist_qsub/dist_qsub.py -p
 ```
 
-If the number of jobs in queue (i.e. the total that shows up at the bottom of the output from showq -u [yourusername]) is low (< ~50), you can add more things by going to your `dist_qsub/qsub_files` directory and manually submitting them (don't put more than ~540 total jobs in your queue):
+If the number of jobs in queue (i.e. the total that shows up at the bottom of the output from showq -u [yourusername]) is low (< ~50), you can add more things by going to your `dest_dir/qsub_files` directory and manually submitting them (don't put more than ~540 total jobs in your queue) (dest_dir is the location your results are being stored in):
 
 ```
-% cd path/to/dist_qsub/qsub_files
+% cd dest_dir/qsub_files
 % qsub [name_of_qsub_file.qsub]
 ```
 
@@ -60,8 +59,6 @@ WARNING: `resubmit.py` is only intended to be used when runs died because of a c
 
 If you accidentally submit things that you didn't mean to, your directories will be stored in backup directories, ending in "_bak". To restore them to their original names, you can use the restore_backups script:
 ```
-% python path/to/dist_qsub/restore_backups.sh
+% path/to/dist_qsub/restore_backups.sh
 ```
 (run this from the directory containing the directories for all of your runs)
-
--->
