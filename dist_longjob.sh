@@ -34,6 +34,7 @@ echo CPR $CPR
 echo EMAILSCRIPT $EMAILSCRIPT
 echo USESCRATCH $USESCRATCH
 echo DIST_QSUB_DIR $DIST_QSUB_DIR
+echo QSUB_DIR $QSUB_DIR
 echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
@@ -292,34 +293,29 @@ $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 echo "Sub-job completed with exit status ${RET}"
 
 
-############ COMMENTED OUT FOR SAFETY ##################
-## Don't expect that this will submit unsubmitted jobs #
-## The below doesn't do what you think it does.        #
-########################################################
-
 #create task finished file
-#cp ${QSUB_FILE} ${QSUB_FILE}_done
+cp ${QSUB_FILE} ${QSUB_FILE}_done
 
 #remove lock file
-#rm ${QSUB_FILE}_done.lock
+rm ${QSUB_FILE}_done.lock
 #remove original qsub file so we don't have to keep trying to submit it
-#rm ${QSUB_FILE}
+rm ${QSUB_FILE}
 
 
 #echo "Checking to see if there are more jobs that should be started"
 
-#qstat -f ${PBS_JOBID} | grep "used"
-#export RET
+qstat -f ${PBS_JOBID} | grep "used"
+export RET
 
 # Make sure not to submit too many jobs
-#current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
 
-#if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
-#then
-#    # submits the next job
-#    if [ $current_jobs -lt $MAX_QUEUE ]
-#    then#
-#	echo "Trying to submit another job"
-#	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
-#    fi
-#fi
+if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+then
+    # submits the next job
+    if [ $current_jobs -lt $MAX_QUEUE ]
+    then#
+	echo "Trying to submit another job"
+	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
+  fi
+fi

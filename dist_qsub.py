@@ -212,6 +212,7 @@ export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
 export DIST_QSUB_DIR=%dist_qsub_dir%
+export QSUB_DIR=%qsub_dir%
 export QSUB_FILE=%qsub_file%
 export MAX_QUEUE=%max_queue%
 
@@ -235,14 +236,15 @@ script_template = script_template.replace( "%lstring_spaces%", " ".join(l_string
 script_template = script_template.replace( "%email_address%", settings['email'])
 script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
+script_template = script_template.replace( "%qsub_dir%", dest_dir+"/qsub_files" )
 script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
 script_template = script_template.replace( "%max_queue%", str(options.max_queue))
 script_template = script_template.replace( "%cpr%", settings["cpr"])
 
 
-if not os.path.exists(dist_qsub_dir+"/qsub_files"):
-    os.mkdir(dist_qsub_dir+"/qsub_files")
+if not os.path.exists(dest_dir+"/qsub_files"):
+    os.mkdir(dest_dir+"/qsub_files")
 
 submitted = 0
 
@@ -278,22 +280,20 @@ for command in processes:
         if os.path.exists(jobtarget):
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
-    qsub_file = dist_qsub_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
+    qsub_file = dest_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
 
     command_final = command_final.replace("%qsub_file%", qsub_file)
 
+    os.system("rm {0}*".format(qsub_file))
+    f = open(qsub_file, "w")
+    f.write(command_final)
+    f.close()
+
     if not options.printonly and submitted <= options.max_queue:
-
         print "Submitting: " + command[1]
-        os.system("rm {0}*".format(qsub_file))
-
-        f = open(qsub_file, "w")
-        f.write(command_final)
-        f.close()
-
         os.system("qsub {0}".format(qsub_file))
-
         with open(qsub_file+"_done.lock", "wb") as lockfile:
             lockfile.write("submitted by dist_qsub")
+
     time.sleep(2)
     submitted += job_ct
