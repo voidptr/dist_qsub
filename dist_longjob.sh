@@ -215,6 +215,7 @@ RET=$?
 ############### NOW WE WAIT ###################################################
 ###############################################################################
 
+handle_didnt_timeout() {
 # Ooh, we're executing again. Something musta happened.
 # Check to see if we're moving along again because the job checkpointed
 if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint
@@ -239,7 +240,21 @@ echo ${RET}
 if [ "${RET}" = "132" ] #Job terminated due to cr_checkpoint
 then
 	echo "CRASH - Job seems to have crashed, but it's unclear how."
-    echo "TODO -- add some kind of crash recovery."
+    echo "Attempting crash recovery."
+    cr_restart --no-restore-pid --file checkpoint_safe.blcr >> run.log 2>&1 &
+    PID=$!
+
+    #Dividing it by 2 is probably overkill - just trying to play it safe.
+    (sleep $(expr $BLCR_WAIT_SEC / 2); echo 'Timer Done'; checkpoint_timeout;) &
+    timeout=$!
+    echo "starting timer (${timeout}) for $BLCR_WAIT_SEC / 2 seconds"
+    
+    echo "Waiting on cr_run job: $PID"
+    echo "ZZzzzzz"
+    wait ${PID}
+    RET=$?
+    handle_didnt_timeout()
+    exit 0
 fi
 
 
@@ -295,20 +310,25 @@ echo "Sub-job completed with exit status ${RET}"
 
 #create task finished file
 cp ${QSUB_FILE} ${QSUB_FILE}_done
+echo "${QSUB_FILE} is done"
 
 #remove lock file
 rm ${QSUB_FILE}_done.lock
+echo "Lock removed"
+
 #remove original qsub file so we don't have to keep trying to submit it
 rm ${QSUB_FILE}
+echo "Original qsub file removed"
 
 
-#echo "Checking to see if there are more jobs that should be started"
+echo "Checking to see if there are more jobs that should be started"
 
 qstat -f ${PBS_JOBID} | grep "used"
 export RET
 
 # Make sure not to submit too many jobs
 current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+echo "There are currently ${current_jobs} jobs in the queue"
 
 if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
 then
@@ -319,3 +339,8 @@ then
 	     python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
     fi
 fi
+
+}
+
+handle_didnt_timeout()
+echo "Done with everything"

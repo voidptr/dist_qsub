@@ -280,7 +280,7 @@ for command in processes:
     # clean up the target directories
     for i in range(job_ct+1):
         jobtarget = settings['dest_dir'] + "/" + command[1] + "_" + str(start_seed + i)
-        if os.path.exists(jobtarget):
+        if os.path.exists(jobtarget) and settings['cpr'] == "0":
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
     qsub_file = dest_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
