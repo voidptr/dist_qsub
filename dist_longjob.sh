@@ -253,7 +253,7 @@ then
     echo "ZZzzzzz"
     wait ${PID}
     RET=$?
-    handle_didnt_timeout()
+    handle_didnt_timeout
     exit 0
 fi
 
@@ -342,5 +342,5 @@ fi
 
 }
 
-handle_didnt_timeout()
+handle_didnt_timeout
 echo "Done with everything"
