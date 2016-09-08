@@ -108,10 +108,10 @@ for run in run_logs:
             if os.path.exists(rep+"/checkpoint_safe.blcr") and options.cpr:
                 try:
                     shutil.copy(rep+"/checkpoint_safe.blcr", rep+"/checkpoint.blcr")
-                except IOError: 
+                except IOError as e: 
                     '''Note: Technically we should check if e.errno==EACCES
                     or switch to py3 to use PermissionError'''
-                    print "Not resubmitting", rep, "because don't have permission."
+                    print "Not resubmitting", rep, "because don't have permission. ", e
                     not_resubmitted.append(rep)
                     continue
                     

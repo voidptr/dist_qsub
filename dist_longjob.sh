@@ -241,12 +241,13 @@ echo ${RET}
 if [ "${RET}" = "132" ] #Job terminated due to cr_checkpoint
 then
     echo "CRASH - Job seems to have crashed, but it's unclear how."
-    echo "Attempting crash recovery."
+    echo "Attempting crash recovery. Retries: $timeout_retries"
 
     #If we have a checkpoint_safe file and using it hasn't already failed
     #give that a shot
     if [ -f checkpoint_safe.blcr && $timeout_retries -lt 2 ]
     then
+	echo "Restarting..."
 	cr_restart --no-restore-pid --file checkpoint_safe.blcr >> run.log 2>&1 &
 	PID=$!
 
