@@ -39,7 +39,7 @@ echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
 user=$(whoami)
-
+timeout=0
 ###### get the job going
 if [ $CPR -eq "0" ] ## initial
 then
@@ -215,6 +215,7 @@ RET=$?
 ############### NOW WE WAIT ###################################################
 ###############################################################################
 
+
 handle_didnt_timeout() {
 # Ooh, we're executing again. Something musta happened.
 # Check to see if we're moving along again because the job checkpointed
@@ -239,21 +240,37 @@ echo ${RET}
 
 if [ "${RET}" = "132" ] #Job terminated due to cr_checkpoint
 then
-	echo "CRASH - Job seems to have crashed, but it's unclear how."
+    echo "CRASH - Job seems to have crashed, but it's unclear how."
     echo "Attempting crash recovery."
-    cr_restart --no-restore-pid --file checkpoint_safe.blcr >> run.log 2>&1 &
-    PID=$!
 
-    #Dividing it by 2 is probably overkill - just trying to play it safe.
-    (sleep $(expr $BLCR_WAIT_SEC / 2); echo 'Timer Done'; checkpoint_timeout;) &
-    timeout=$!
-    echo "starting timer (${timeout}) for $BLCR_WAIT_SEC / 2 seconds"
-    
-    echo "Waiting on cr_run job: $PID"
-    echo "ZZzzzzz"
-    wait ${PID}
-    RET=$?
-    handle_didnt_timeout
+    #If we have a checkpoint_safe file and using it hasn't already failed
+    #give that a shot
+    if [ -f checkpoint_safe.blcr && $timeout -lt 2 ]
+    then
+	cr_restart --no-restore-pid --file checkpoint_safe.blcr >> run.log 2>&1 &
+	PID=$!
+
+	#debugging
+	touch attempted_recovery_$PID
+
+	#Dividing it by 2 is probably overkill - just trying to play it safe.
+	(sleep $(expr $BLCR_WAIT_SEC / 2); echo 'Timer Done'; checkpoint_timeout;) &
+	timeout=$!
+	echo "starting timer (${timeout}) for $BLCR_WAIT_SEC / 2 seconds"
+	
+	echo "Waiting on cr_run job: $PID"
+	echo "ZZzzzzz"
+	wait ${PID}
+	RET=$?
+	handle_didnt_timeout
+    fi
+
+    #debugging
+    if [$timeout -eq 2]
+    then
+	touch attempted_recovery_failed_$PID
+    fi
+
     exit 0
 fi
 
@@ -342,5 +359,6 @@ fi
 
 }
 
+timeout=$(expr $timeout + 1)
 handle_didnt_timeout
 echo "Done with everything"
