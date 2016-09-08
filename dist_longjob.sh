@@ -39,7 +39,7 @@ echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
 user=$(whoami)
-timeout=0
+timeout_retries=0
 ###### get the job going
 if [ $CPR -eq "0" ] ## initial
 then
@@ -245,7 +245,7 @@ then
 
     #If we have a checkpoint_safe file and using it hasn't already failed
     #give that a shot
-    if [ -f checkpoint_safe.blcr && $timeout -lt 2 ]
+    if [ -f checkpoint_safe.blcr && $timeout_retries -lt 2 ]
     then
 	cr_restart --no-restore-pid --file checkpoint_safe.blcr >> run.log 2>&1 &
 	PID=$!
@@ -266,7 +266,7 @@ then
     fi
 
     #debugging
-    if [$timeout -eq 2]
+    if [$timeout_retries -eq 2]
     then
 	touch attempted_recovery_failed_$PID
     fi
@@ -359,6 +359,6 @@ fi
 
 }
 
-timeout=$(expr $timeout + 1)
+timeout_retries=$(expr $timeout_retries + 1)
 handle_didnt_timeout
 echo "Done with everything"
