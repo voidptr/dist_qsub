@@ -245,7 +245,7 @@ then
 
     #If we have a checkpoint_safe file and using it hasn't already failed
     #give that a shot
-    if [ -f checkpoint_safe.blcr && $timeout_retries -lt 2 ]
+    if [ -f checkpoint_safe.blcr ] && [ $timeout_retries -lt 2 ]
     then
 	cr_restart --no-restore-pid --file checkpoint_safe.blcr >> run.log 2>&1 &
 	PID=$!
@@ -266,7 +266,7 @@ then
     fi
 
     #debugging
-    if [$timeout_retries -eq 2]
+    if [ $timeout_retries -eq 2 ]
     then
 	touch attempted_recovery_failed_$PID
     fi
