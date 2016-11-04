@@ -38,6 +38,26 @@ echo QSUB_DIR $QSUB_DIR
 echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
+temp_fail() {
+  echo "Temporary fail"
+}
+
+perm_fail() {
+  echo "Permenant fail"
+}
+
+env_fail() {
+  echo "Environment fail"
+}
+
+args_fail() {
+  echo "Args fail"
+}
+
+on_success() {
+  echo "Success!!!"
+}
+
 user=$(whoami)
 timeout_retries=0
 ###### get the job going
@@ -78,7 +98,7 @@ else ## restart an existing job!
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
-    cr_restart --no-restore-pid --file checkpoint.blcr >> run.log 2>&1 &
+    cr_restart --no-restore-pid --run-on-fail-temp="temp_fail" --run-on-fail-perm="perm_fail" --run-on-fail-env="env_fail" --run-on-fail-temp="args_fail" --run-on-success="on_success" --file checkpoint.blcr >> run.log 2>&1 &
     PID=$!
 fi
 
@@ -94,7 +114,7 @@ copy_out() {
 checkpoint_timeout() {
     echo "Timeout. Checkpointing Job"
 
-    time cr_checkpoint --term $PID
+    time cr_checkpoint --term -f checkpoint.blcr --backup checkpoint_safe.blcr --kmsg-warning --time 300 $PID
 
     if [ ! "$?" == "0" ]
     then
@@ -104,13 +124,13 @@ checkpoint_timeout() {
 
     #Make a copy of the checkpoint file so it doesn't get corrupted
     #if bad things happen
-    if [ -f checkpoint.blcr ]
-    then
-	     mv checkpoint.blcr checkpoint_safe.blcr
-    fi
-
-    # rename the context file
-    mv context.${PID} checkpoint.blcr
+    # if [ -f checkpoint.blcr ]
+    # then
+	  #    mv checkpoint.blcr checkpoint_safe.blcr
+    # fi
+    #
+    # # rename the context file
+    # mv context.${PID} checkpoint.blcr
 
     ## calculate what the successor job's name should be
 
@@ -216,6 +236,7 @@ RET=$?
 ###############################################################################
 
 
+
 handle_didnt_timeout() {
 # Ooh, we're executing again. Something musta happened.
 # Check to see if we're moving along again because the job checkpointed
@@ -227,6 +248,7 @@ then
   exit 0
 fi
 
+
 # ELSE:
 ######################### JOB COMPLETED ##############################
 # We're actually executing again because the job finished (no checkpointing).
@@ -234,6 +256,9 @@ fi
 #    1. Either the job legit finished,
 #    2. The job crashed on checkpoint restart, as in, it never started up. :(
 # Either way, we have some cleanup to do. :/
+
+#Kill timeout timer
+kill ${timeout} # prevent it from doing anything dumb.
 
 echo "Sub-job seems to have finished. Here's the return code: "
 echo ${RET}
@@ -247,37 +272,35 @@ then
     #give that a shot
     if [ -f checkpoint_safe.blcr ] && [ $timeout_retries -lt 2 ]
     then
-	echo "Restarting..."
-	cr_restart --no-restore-pid --file checkpoint_safe.blcr >> run.log 2>&1 &
-	PID=$!
+	    echo "Restarting..."
+      cr_restart --no-restore-pid --run-on-fail-temp="temp_fail" --run-on-fail-perm="perm_fail" --run-on-fail-env="env_fail" --run-on-fail-temp="args_fail" --run-on-success="on_success" --file checkpoint_safe.blcr >> run.log 2>&1 &
+	    PID=$!
 
-	#debugging
-	touch attempted_recovery_$PID
+	    #debugging
+	    touch attempted_recovery_$PID
+      timeout_retries=$(expr $timeout_retries + 1)
 
-	#Dividing it by 2 is probably overkill - just trying to play it safe.
-	(sleep $(expr $BLCR_WAIT_SEC / 2); echo 'Timer Done'; checkpoint_timeout;) &
-	timeout=$!
-	echo "starting timer (${timeout}) for $BLCR_WAIT_SEC / 2 seconds"
-	
-	echo "Waiting on cr_run job: $PID"
-	echo "ZZzzzzz"
-	wait ${PID}
-	RET=$?
-	handle_didnt_timeout
+      #Dividing it by 2 is probably overkill - just trying to play it safe.
+	    (sleep $(expr $BLCR_WAIT_SEC / 2); echo 'Timer Done'; checkpoint_timeout;) &
+	    timeout=$!
+	    echo "starting timer (${timeout}) for $BLCR_WAIT_SEC / 2 seconds"
+
+	    echo "Waiting on cr_run job: $PID"
+	    echo "ZZzzzzz"
+	    wait ${PID}
+	    RET=$?
+	    handle_didnt_timeout
     fi
 
     #debugging
     if [ $timeout_retries -eq 2 ]
     then
-	touch attempted_recovery_failed_$PID
+	    touch attempted_recovery_failed_$PID
     fi
 
     exit 0
 fi
 
-
-#Kill timeout timer
-kill ${timeout} # prevent it from doing anything dumb.
 
 echo "Cleanup time"
 
