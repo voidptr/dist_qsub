@@ -39,23 +39,33 @@ echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
 temp_fail() {
-  echo "Temporary fail"
+  RET=$?
+  echo "Temporary fail. Return code:"
+  echo ${RET}
 }
 
 perm_fail() {
-  echo "Permenant fail"
+  RET=$?
+  echo "Permenant fail. Return code:"
+  echo ${RET}
 }
 
 env_fail() {
-  echo "Environment fail"
+  RET=$?
+  echo "Environment fail. Return code:"
+  echo ${RET}
 }
 
 args_fail() {
-  echo "Args fail"
+  RET=$?
+  echo "Args fail. Return code:"
+  echo ${RET}
 }
 
 on_success() {
-  echo "Success!!!"
+  RET=$?
+  echo "Success!!!. Return code:"
+  echo ${RET}
 }
 
 user=$(whoami)
@@ -98,7 +108,7 @@ else ## restart an existing job!
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
-    cr_restart --no-restore-pid --run-on-fail-temp="temp_fail" --run-on-fail-perm="perm_fail" --run-on-fail-env="env_fail" --run-on-fail-temp="args_fail" --run-on-success="on_success" --file checkpoint.blcr >> run.log 2>&1 &
+    cr_restart --no-restore-pid --run-on-fail-temp="temp_fail()" --run-on-fail-perm="perm_fail()" --run-on-fail-env="env_fail()" --run-on-fail-temp="args_fail()" --run-on-success="on_success()" --file checkpoint.blcr >> run.log 2>&1 &
     PID=$!
 fi
 
@@ -273,7 +283,7 @@ then
     if [ -f checkpoint_safe.blcr ] && [ $timeout_retries -lt 2 ]
     then
 	    echo "Restarting..."
-      cr_restart --no-restore-pid --run-on-fail-temp="temp_fail" --run-on-fail-perm="perm_fail" --run-on-fail-env="env_fail" --run-on-fail-temp="args_fail" --run-on-success="on_success" --file checkpoint_safe.blcr >> run.log 2>&1 &
+      cr_restart --no-restore-pid --run-on-fail-temp="temp_fail()" --run-on-fail-perm="perm_fail()" --run-on-fail-env="env_fail()" --run-on-fail-temp="args_fail()" --run-on-success="on_success()" --file checkpoint_safe.blcr >> run.log 2>&1 &
 	    PID=$!
 
 	    #debugging
