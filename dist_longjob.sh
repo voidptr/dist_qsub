@@ -38,35 +38,6 @@ echo QSUB_DIR $QSUB_DIR
 echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
-temp_fail() {
-  RET=$?
-  echo "Temporary fail. Return code:"
-  echo ${RET}
-}
-
-perm_fail() {
-  RET=$?
-  echo "Permenant fail. Return code:"
-  echo ${RET}
-}
-
-env_fail() {
-  RET=$?
-  echo "Environment fail. Return code:"
-  echo ${RET}
-}
-
-args_fail() {
-  RET=$?
-  echo "Args fail. Return code:"
-  echo ${RET}
-}
-
-on_success() {
-  RET=$?
-  echo "Success!!!. Return code:"
-  echo ${RET}
-}
 
 user=$(whoami)
 timeout_retries=0
@@ -108,7 +79,7 @@ else ## restart an existing job!
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
-    cr_restart --no-restore-pid --run-on-fail-temp="temp_fail()" --run-on-fail-perm="perm_fail()" --run-on-fail-env="env_fail()" --run-on-fail-temp="args_fail()" --run-on-success="on_success()" --file checkpoint.blcr >> run.log 2>&1 &
+    cr_restart --no-restore-pid --run-on-fail-temp="RET=$?; echo temp_fail" --run-on-fail-perm="RET=$?; echo perm_fail" --run-on-fail-env="RET=$?; echo env_fail" --run-on-fail-temp="RET=$?; echo args_fail" --run-on-success="RET=$?; echo Success. Return Code; echo ${RET}" --file checkpoint.blcr >> run.log 2>&1 &
     PID=$!
 fi
 
@@ -258,7 +229,7 @@ then
   exit 0
 fi
 
-
+echo "$timeout_retries timeouts"
 # ELSE:
 ######################### JOB COMPLETED ##############################
 # We're actually executing again because the job finished (no checkpointing).
@@ -283,7 +254,7 @@ then
     if [ -f checkpoint_safe.blcr ] && [ $timeout_retries -lt 2 ]
     then
 	    echo "Restarting..."
-      cr_restart --no-restore-pid --run-on-fail-temp="temp_fail()" --run-on-fail-perm="perm_fail()" --run-on-fail-env="env_fail()" --run-on-fail-temp="args_fail()" --run-on-success="on_success()" --file checkpoint_safe.blcr >> run.log 2>&1 &
+      cr_restart --no-restore-pid --run-on-fail-temp="RET=$?; echo temp_fail" --run-on-fail-perm="RET=$?; echo perm_fail" --run-on-fail-env="RET=$?; echo env_fail" --run-on-fail-temp="RET=$?; echo args_fail" --run-on-success="RET=$?; echo Success. Return Code; echo ${RET}" --file checkpoint_safe.blcr >> run.log 2>&1 &
 	    PID=$!
 
 	    #debugging
