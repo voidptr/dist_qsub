@@ -95,7 +95,7 @@ copy_out() {
 checkpoint_timeout() {
     echo "Timeout. Checkpointing Job"
 
-    time cr_checkpoint --term -f checkpoint.blcr --backup checkpoint_safe.blcr --kmsg-warning --time 300 $PID
+    time cr_checkpoint --term -f checkpoint.blcr --backup=checkpoint_safe.blcr --kmsg-warning --time 300 $PID
 
     if [ ! "$?" == "0" ]
     then
