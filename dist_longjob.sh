@@ -79,7 +79,7 @@ else ## restart an existing job!
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
-    cr_restart --no-restore-pid --run-on-fail-temp="RET=$?; echo temp_fail" --run-on-fail-perm="RET=$?; echo perm_fail" --run-on-fail-env="RET=$?; echo env_fail" --run-on-fail-temp="RET=$?; echo args_fail" --run-on-success="RET=$?; echo Success. Return Code; echo ${RET}" --file checkpoint.blcr >> run.log 2>&1 &
+    cr_restart --no-restore-pid --run-on-fail-temp="echo temp_fail" --run-on-fail-perm="echo perm_fail" --run-on-fail-env="echo env_fail" --run-on-fail-temp="echo args_fail" --run-on-success="echo Success" --file checkpoint.blcr >> run.log 2>&1 &
     PID=$!
 fi
 
@@ -251,14 +251,37 @@ then
 
     #If we have a checkpoint_safe file and using it hasn't already failed
     #give that a shot
-    if [ -f checkpoint_safe.blcr ] && [ $timeout_retries -lt 2 ]
+    if [ -f checkpoint.blcr ] && [ $timeout_retries -lt 2 ]
+    then
+      echo "Restarting..."
+      mv checkpoint.blcr checkpoint_tried.blcr
+      cr_restart --no-restore-pid --run-on-fail-temp="echo temp_fail" --run-on-fail-perm="echo perm_fail" --run-on-fail-env="echo env_fail" --run-on-fail-temp="echo args_fail" --run-on-success="echo Success" --file checkpoint_tried.blcr >> run.log 2>&1 &
+      PID=$!
+
+      #debugging
+      touch attempted_recovery_check_$PID
+      timeout_retries=$(expr $timeout_retries + 1)
+
+      #Dividing it by 2 is probably overkill - just trying to play it safe.
+      (sleep $(expr $BLCR_WAIT_SEC / 2); echo 'Timer Done'; checkpoint_timeout;) &
+      timeout=$!
+      echo "starting timer (${timeout}) for $BLCR_WAIT_SEC / 2 seconds"
+
+      echo "Waiting on cr_run job: $PID"
+      echo "ZZzzzzz"
+      wait ${PID}
+      RET=$?
+      handle_didnt_timeout
+
+    elif [ -f checkpoint_safe.blcr ] && [ $timeout_retries -lt 3 ]
     then
 	    echo "Restarting..."
-      cr_restart --no-restore-pid --run-on-fail-temp="RET=$?; echo temp_fail" --run-on-fail-perm="RET=$?; echo perm_fail" --run-on-fail-env="RET=$?; echo env_fail" --run-on-fail-temp="RET=$?; echo args_fail" --run-on-success="RET=$?; echo Success. Return Code; echo ${RET}" --file checkpoint_safe.blcr >> run.log 2>&1 &
+      mv checkpoint_safe.blcr checkpoint_safe_tried.blcr
+      cr_restart --no-restore-pid --run-on-fail-temp="echo temp_fail" --run-on-fail-perm="echo perm_fail" --run-on-fail-env="echo env_fail" --run-on-fail-temp="echo args_fail" --run-on-success="echo Success" --file checkpoint_safe_tried.blcr >> run.log 2>&1 &
 	    PID=$!
 
 	    #debugging
-	    touch attempted_recovery_$PID
+	    touch attempted_recovery_checksafe_$PID
       timeout_retries=$(expr $timeout_retries + 1)
 
       #Dividing it by 2 is probably overkill - just trying to play it safe.
@@ -274,7 +297,7 @@ then
     fi
 
     #debugging
-    if [ $timeout_retries -eq 2 ]
+    if [ $timeout_retries -eq 3 ]
     then
 	    touch attempted_recovery_failed_$PID
     fi
