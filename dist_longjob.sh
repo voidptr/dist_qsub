@@ -11,7 +11,7 @@
 ## Setup and Environment Variables
 
 # Set the default wait time to just under four hours
-export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 6 * 60 ))
+export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 600 ))
 #export BLCR_WAIT_SEC=30 # 90 seconds for testing
 
 # these variables must be passed in via qsub -v, or be exported in the environment
