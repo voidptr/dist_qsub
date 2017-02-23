@@ -38,6 +38,10 @@ parser.add_option("-d", "--debug_messages", action = "store_true",
                   default = False, help = "print debug messages to stdout")
 parser.add_option("-c", "--checkpoint", action = "store_true",
                   dest="checkpoint", default=True, help="apply checkpointing.")
+parser.add_option("--nocheckpoint", action = "store_true",
+                  dest="nocheckpoint", default=False, help="do NOT apply checkpointing.")
+
+
 parser.add_option("-m", "--max-queue", action = "store",
                   dest="max_queue", default=535,
     help="How many jobs should be queued beforeinvoking additional scheduler?")
@@ -89,10 +93,10 @@ for command in processes:
     bits = command[2].split(";")
     newcomm = []
     for bit in bits:
-        if options.checkpoint:
-            newcomm.append(bit.lstrip())
-        else:
-            newcomm.append(bit.lstrip() + " 2>&1 | cat >> run.log")
+#        if options.checkpoint:
+#            newcomm.append(bit.lstrip())
+#        else:
+        newcomm.append(bit.lstrip() + " 2>&1 | cat >> run.log")
 
     command[2] = ";".join(newcomm)
 
@@ -228,7 +232,7 @@ def strdiff(str1, str2):
             return i
 
 script_template = script_template_basic
-if options.checkpoint:
+if options.checkpoint and not options.nocheckpoint:
     script_template = script_template_checkpointing
 
 script_template = script_template.replace( "%lstring%", ",".join(l_string))
