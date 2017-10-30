@@ -244,7 +244,7 @@ kill ${timeout} # prevent it from doing anything dumb.
 echo "Sub-job seems to have finished. Here's the return code: "
 echo ${RET}
 
-if [ "${RET}" = "132" ] #Job terminated due to cr_checkpoint
+if [ "${RET}" = "132" ] || [ "${RET}" = "139" ]  #Job terminated due to cr_checkpoint
 then
     echo "CRASH - Job seems to have crashed, but it's unclear how."
     echo "Attempting crash recovery. Retries: $timeout_retries"
