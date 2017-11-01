@@ -92,26 +92,7 @@ copy_out() {
     rm dist_transfer.tar.gz
 }
 
-checkpoint_timeout() {
-    echo "Timeout. Checkpointing Job"
-
-    time cr_checkpoint --term -f checkpoint.blcr --backup=checkpoint_safe.blcr --kmsg-warning --time 300 $PID
-
-    if [ ! "$?" == "0" ]
-    then
-        echo "Failed to checkpoint."
-        exit 2
-    fi
-
-    #Make a copy of the checkpoint file so it doesn't get corrupted
-    #if bad things happen
-    # if [ -f checkpoint.blcr ]
-    # then
-	  #    mv checkpoint.blcr checkpoint_safe.blcr
-    # fi
-    #
-    # # rename the context file
-    # mv context.${PID} checkpoint.blcr
+resubmit_array() {
 
     ## calculate what the successor job's name should be
 
@@ -195,6 +176,20 @@ checkpoint_timeout() {
     done <${QSUB_FILE}_successor_jobs.txt
 
     echo "Done with Timeout and Checkpoint Processing"
+}
+
+checkpoint_timeout() {
+    echo "Timeout. Checkpointing Job"
+
+    time cr_checkpoint --term -f checkpoint.blcr --backup=checkpoint_safe.blcr --kmsg-warning --time 300 $PID
+
+    if [ ! "$?" == "0" ]
+    then
+        echo "Failed to checkpoint."
+        exit 2
+    fi
+    
+    resubmit_array
 }
 
 # begin checkpoint timeout, which will go in the background.
@@ -300,6 +295,12 @@ then
     if [ $timeout_retries -eq 3 ]
     then
 	    touch attempted_recovery_failed_$PID
+    	    echo "Restoring checkpoint files since it's unlikely they're both corrupted. This was probably caused by something else, like running on the wrong node"
+	    mv checkpoint_safe_tried.blcr checkpoint_safe.blcr
+	    mv checkpoint_tried.blcr checkpoint.blcr
+	    
+	    echo "Resubmitting array... hopefully this will work next time around"
+	    resubmit_array
     fi
 
     exit 0
