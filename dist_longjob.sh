@@ -142,7 +142,7 @@ resubmit_array() {
                 echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
                 mysid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
                 echo $mysid >> ${QSUB_FILE}_successor_jobs.txt
-
+		
             else
                 # oop, lost the race
                 echo "Lost the race, letting winner do the thing."
@@ -170,8 +170,8 @@ resubmit_array() {
     do
         while read p || [[ -n $p ]]
         do
-            echo qdel -t $p ${sid}[]
-            qdel -t $p ${sid}[]
+            echo qdel ${sid}[$p]
+            qdel ${sid}[$p]
         done <${QSUB_FILE}_done_arrayjobs.txt
     done <${QSUB_FILE}_successor_jobs.txt
 
@@ -294,7 +294,7 @@ then
     #debugging
     if [ $timeout_retries -eq 3 ]
     then
-	    touch attempted_recovery_failed_$PID
+	    touch array_resubmited_$PID
     	    echo "Restoring checkpoint files since it's unlikely they're both corrupted. This was probably caused by something else, like running on the wrong node"
 	    mv checkpoint_safe_tried.blcr checkpoint_safe.blcr
 	    mv checkpoint_tried.blcr checkpoint.blcr
@@ -342,8 +342,8 @@ while read j || [[ -n $j ]]
 do
     while read p || [[ -n $p ]]
     do
-        echo qdel -t $p $j[]
-        qdel -t $p $j[]
+        echo qdel $j[$p]
+        qdel $j[$p]
     done <${QSUB_FILE}_done_arrayjobs.txt
 done <${QSUB_FILE}_successor_jobs.txt
 
@@ -365,7 +365,6 @@ echo "Lock removed"
 #remove original qsub file so we don't have to keep trying to submit it
 rm ${QSUB_FILE}
 echo "Original qsub file removed"
-
 
 echo "Checking to see if there are more jobs that should be started"
 
