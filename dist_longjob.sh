@@ -376,8 +376,6 @@ fi
 
 echo "Cleanup time"
 
-## mark our job as being complete, so it gets cleaned up in later iterations.
-echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
 # trim out the excess after the [ from the jobID
@@ -407,15 +405,19 @@ fi
 echo "Deleting all other unneeded successor subjobs."
 while read j || [[ -n $j ]]
 do
+    # Sucessors for jobs that have already been marked as done
     while read p || [[ -n $p ]]
     do
-    	if [ $j -ne $trimmedid ] || [ $p -ne $PBS_ARRAYID ]
-	then
-	    echo $j $trimmedid $p $PBS_ARRAYID
-    	    echo qdel $j[$p]
-            qdel $j[$p]
-	fi
+    	echo qdel $j[$p]
+        qdel $j[$p]
     done <${QSUB_FILE}_done_arrayjobs.txt
+
+    # Delete this job from other arrays
+    if [ $j -ne $trimmedid ]
+    then
+	qdel $j[${PBS_ARRAYID}]
+    fi
+
 done <${QSUB_FILE}_successor_jobs.txt
 
 #Notify the email script that we're done.
@@ -455,6 +457,10 @@ then
 	     python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
     fi
 fi
+
+## mark our job as being complete, so it gets cleaned up in later iterations.
+## This happens at the very end so no other jobs try to clean it up while it's still doing cleanup
+echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 }
 
