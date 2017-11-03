@@ -154,12 +154,20 @@ resubmit_array() {
 		    while read suc || [[ -n $suc ]]
 		    do 
 		        running=$(expr $running + `qstat -t $suc[$jid] | tail -n +3 | tr -s ' ' | cut -f 5 -d " " | grep "R" | wc -l`)
-			echo $running 
+
 		    done <${QSUB_FILE}_successor_jobs.txt
 		    if [ $running -lt 1 ] 
 		    then 
 		        echo "Job isn't running. Restarting it"
-		
+			
+			while read suc || [[ -n $suc ]]
+		    	do 
+		            if [ $suc -ne ${mysid} ]
+			    then
+			    	qdel ${suc}[$jid]
+			    fi
+		    	done <${QSUB_FILE}_successor_jobs.txt
+			
 			echo qrls -t $jid ${mysid}[]
 			qrls -t $jid ${mysid}[]
 		    fi
