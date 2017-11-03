@@ -248,7 +248,12 @@ handle_didnt_timeout() {
 # Check to see if we're moving along again because the job checkpointed
 if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint
 then
-	echo "AWAKE - Job seems to have been checkpointed, waiting for checkpoint_timeout function to finish processing."
+
+  # Clear repeated failure tracker
+  rm last_failed 2> /dev/null
+  rm last_two_failed 2> /dev/null
+  
+  echo "AWAKE - Job seems to have been checkpointed, waiting for checkpoint_timeout function to finish processing."
   wait ${timeout}
   echo "See you next time around..."
   exit 0
@@ -329,6 +334,24 @@ then
 	    mv checkpoint_safe_tried.blcr checkpoint_safe.blcr
 	    mv checkpoint_tried.blcr checkpoint.blcr
 	    
+	    if [ -f last_failed ]
+	    then
+	    	
+		if [ -f last_two_failed ]
+		then
+		    echo "Third array resubmit fail in a row... this isn't working"
+		    echo "Letting this job die. Maybe it will get recovered by another job"
+		    rm last_failed
+		    rm last_two_failed
+		    touch complete_array_resubmit_failure
+		    exit 0
+		fi
+		echo "Hmmm... second array resubmit fail in a row. This isn't looking good."	    
+	        touch last_two_failed
+	    else
+	        touch last_failed
+	    fi
+	    
 	    echo "Resubmitting array... hopefully this will work next time around"
 	    resubmit_array
     fi
@@ -392,11 +415,11 @@ cp ${QSUB_FILE} ${QSUB_FILE}_done
 echo "${QSUB_FILE} is done"
 
 #remove lock file
-rm ${QSUB_FILE}_done.lock
+rm ${QSUB_FILE}_done.lock 2> /dev/null
 echo "Lock removed"
 
 #remove original qsub file so we don't have to keep trying to submit it
-rm ${QSUB_FILE}
+rm ${QSUB_FILE} 2> /dev/null
 echo "Original qsub file removed"
 
 echo "Checking to see if there are more jobs that should be started"
