@@ -66,6 +66,11 @@ then
     echo $JOBCOMMAND >> command.sh
     chmod 755 ./command.sh
 
+
+    # Add this ID to the list of ids associated with this chunk of jobs
+    trimmedid=`echo ${PBS_JOBID} | rev | cut -d[ -f2- | rev`
+    echo $trimmedid >> ${QSUB_FILE}_successor_jobs.txt
+
     # and run it with cr_run
 
     cr_run ./command.sh 1> run.log 2>&1 &
@@ -137,8 +142,7 @@ resubmit_array() {
                 rm $TARGETDIR/$sname.* # clean up
 
                 ### Grab the ID of the job we just made and stuff it into the jobs file
-                ### It won't include the current job ID if it was the original submitted job
-                ### TODO -- add this to the dist_qsub.py script.
+                ### Original ID should have already been added above
                 echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
                 mysid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
                 echo $mysid >> ${QSUB_FILE}_successor_jobs.txt
