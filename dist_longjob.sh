@@ -143,7 +143,7 @@ resubmit_array() {
                 mysid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
                 echo $mysid >> ${QSUB_FILE}_successor_jobs.txt
 		
-		for jid in $(qselect -s H -u mwiser | grep $trimmedid | cut -d '[' -f 2 | cut -d ']' -f 1)
+		for jid in $(qselect -s H -u $PBS_O_LOGNAME | grep $trimmedid | cut -d '[' -f 2 | cut -d ']' -f 1)
 		do 
 		    running=0
 		    echo "JID:" $jid
@@ -151,11 +151,13 @@ resubmit_array() {
 		    do 
 		        running=$(expr $running + `qstat -t $suc[$jid] | tail -n +3 | tr -s ' ' | cut -f 5 -d " " | grep "R" | wc -l`)
 			echo $running 
-		    done <qsub_files/long-gen-l77-200k_1181..1210.qsub_successor_jobs.txt
+		    done <${QSUB_FILE}_successor_jobs.txt
 		    if [ $running -lt 1 ] 
 		    then 
-		        echo qdel $jid 
-			echo qrls $jid 
+		        echo "Job isn't running. Restarting it"
+		
+			echo qrls -t $jid ${mysid}[]
+			qrls -t $jid ${mysid}[]
 		    fi
 		done
 		
@@ -186,8 +188,8 @@ resubmit_array() {
     do
         while read p || [[ -n $p ]]
         do
-            echo qdel ${sid}[$p]
-            qdel ${sid}[$p]
+            echo qdel ${j}[$p]
+            qdel ${j}[$p]
         done <${QSUB_FILE}_done_arrayjobs.txt
     done <${QSUB_FILE}_successor_jobs.txt
 
