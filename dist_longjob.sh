@@ -411,6 +411,7 @@ do
     do
     	if [ $j -ne $trimmedid ] || [ $p -ne $PBS_ARRAYID ]
 	then
+	    echo $j $trimmedid $p $PBS_ARRAYID
     	    echo qdel $j[$p]
             qdel $j[$p]
 	fi
