@@ -360,8 +360,11 @@ while read j || [[ -n $j ]]
 do
     while read p || [[ -n $p ]]
     do
-        echo qdel $j[$p]
-        qdel $j[$p]
+    	if [ $j -ne $trimmedid ] || [ $p -ne $PBS_ARRAYID ]
+	then
+    	    echo qdel $j[$p]
+            qdel $j[$p]
+	fi
     done <${QSUB_FILE}_done_arrayjobs.txt
 done <${QSUB_FILE}_successor_jobs.txt
 
