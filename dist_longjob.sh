@@ -147,19 +147,32 @@ resubmit_array() {
                 mysid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
                 echo $mysid >> ${QSUB_FILE}_successor_jobs.txt
 		
+		# Attempt to restart any orphaned jobs (i.e. jobs that should run but that don't have any jobs around
+		# that could possibly start them - this happens if the precursor dies in a weird way)
+		# Start by iterating over all jobs in the current array that are still in the held state
+		# (since it's suspicious that they haven't even started running and this one is already done)
 		for jid in $(qselect -s H -u $PBS_O_LOGNAME | grep $trimmedid | cut -d '[' -f 2 | cut -d ']' -f 1)
 		do 
+		    # If this job is already completely done, go to the next iteration so we don't accidentally restart it
+		    isdone=`grep -w $jid ${QSUB_FILE}_done_arrayjobs.txt | wc -l`
+		    if [ $isdone -ge 1 ]
+		    then
+		    	continue
+		    fi
+		    
 		    running=0
-		    echo "JID:" $jid
+		    echo "Checking for orphaned jobs. JID:" $jid
 		    while read suc || [[ -n $suc ]]
 		    do 
+		        # Is this job id running in any prior array? If so, it just got really far behind. No action required.
 		        running=$(expr $running + `qstat -t $suc[$jid] | tail -n +3 | tr -s ' ' | cut -f 5 -d " " | grep "R" | wc -l`)
-
 		    done <${QSUB_FILE}_successor_jobs.txt
+		    
 		    if [ $running -lt 1 ] 
 		    then 
 		        echo "Job isn't running. Restarting it"
-			
+		
+			# Cleanup any jobs that were supposed to run this but never got released - we're in charge now
 			while read suc || [[ -n $suc ]]
 		    	do 
 		            if [ $suc -ne ${mysid} ]
@@ -168,6 +181,7 @@ resubmit_array() {
 			    fi
 		    	done <${QSUB_FILE}_successor_jobs.txt
 			
+			# Run the job
 			echo qrls -t $jid ${mysid}[]
 			qrls -t $jid ${mysid}[]
 		    fi
