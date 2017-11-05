@@ -19,13 +19,12 @@ In the run_list file, currently supported "set" options are:
 
   email - (required) the email address for HPCC messages (crashes only)
   email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.
-  class_pref - supported classes 91, 92, 95, 150
+  class_pref - supported classes 91, 92, 95, 150 (intel14), 200 (intel16)
   walltime - ints only, in hours
   mem_request - in gigabytes
   dest_dir - (required) the path to the output directory
-
-Currently unsupported, but planned options:
-  config_dir
+  cpr - [default: 0] are these jobs being restarted from existing checkpoints (can be 0 (False) or 1 (True))
+  config_dir - the path to a directory that contains configuration files. Will be copied into working directory before run.
 
 """
 parser = OptionParser(usage)
