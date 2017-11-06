@@ -1,9 +1,52 @@
-dist_qsub
-=========
+dist_qsub: HPCC DevoLab dist_run replacement
+===========================================
 
-HPCC DevoLab dist_run replacement
+# Creating a run_list file
 
-Before running, make sure a run_list file is in the directory along with a "config/"
+A run_list file is a series of runs of experiments that you want to run on the HPCC. It starts with a header, which specifies various settings:
+
+```
+  email - (required) the email address for HPCC messages (crashes only)
+  
+  email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.
+  
+  class_pref - supported classes 91, 92, 95, 150 (intel14), 200 (intel16). Unless you know what you're doing, set this to 200.
+  
+  walltime - ints only, in hours. If you're using checkpointing, this should be 4.
+  
+  mem_request - in gigabytes
+  
+  dest_dir - (required) the path to the output directory. All of the results will be placed in sub-directories within this directory.
+  
+  config_dir - the path to a directory that contains configuration files. Will be copied into working directory before run.
+  
+  cpr - [default: 0] are these jobs being restarted from existing checkpoints? (can be 0 (False) or 1 (True)). 
+  
+```
+
+After the header, provide a list of experiments to run, each one on its own line. The format is:
+
+```
+[first_random_seed]..[last_random_seed] name_of_experiment command to run
+```
+
+If you aren't doing multiple replicates, and so only want a single random seed, you can specify it like this:
+```
+[random_seed] name_of_experiment command to run
+```
+
+The name of the experiment, in combination with the random seed, will be used to name the directory that its results are stored in, so make sure to give each one a unique name. In the command section, you can use `$seed` to use whatever the random seed for an individual run is.
+
+For example, the line:
+
+```
+101..200 MyAvidaExperiment ./avida -s $seed -set WORLD_GEOMETRY 1 -set EVENT_FILE events_example.cfg
+```
+Would run Avida 100 times, using the random seeds 101-200. Avida would be run with the specified command-line arguments, which in this case happen to change the geometry of the world and use a non-default events file. The results would be stored in 100 different directories, named MyAvidaExperiment_101 through MyAvidaExperiment_200.
+
+# Running dist_qsub
+
+Before running, make sure a run_list file (see previous section) is in the directory along with a "config/"
 directory with the content of the run. This is the same setup as the old dist_run
 method.
 
@@ -69,7 +112,6 @@ Sometimes something really bad happens, and you have an entire replicate that di
 
 WARNING: `resubmit.py` is only intended to be used when runs died because of a checkpointing error or HPCC problem. You should always make sure that your runs didn't die of an error in Avida (perhaps because of your config settings), because that will just keep happening no matter how many times you resubmit.
 
-T
 
 If you accidentally resubmit things that you didn't mean to, your directories will be stored in backup directories, ending in "_bak". To restore them to their original names, you can use the restore_backups script:
 ```
