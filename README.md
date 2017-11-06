@@ -10,7 +10,7 @@ A run_list file is a series of runs of experiments that you want to run on the H
   
   email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.
   
-  class_pref - supported classes 91, 92, 95, 150 (intel14), 200 (intel16). Unless you know what you're doing, set this to 200.
+  class_pref - Set this to 200 unless you know what you're doing. Supported classes 91, 92, 95, 150 (intel14), 200 (intel16). 
   
   walltime - ints only, in hours. If you're using checkpointing, this should be 4.
   
