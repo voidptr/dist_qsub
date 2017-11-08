@@ -58,8 +58,8 @@ run_list.write(header)
 conditions = {}
 
 if options.rl_file != "":
-    dest_dir = header.partition("dest_dir")[-1].split("\n")[0]
-    if os.getcwd().split("/")[-1] == dest_dir.strip("/").split("/")[-1]:
+    dest_dir = header.partition("dest_dir")[-1].strip().split("\n")[0]
+    if dest_dir[0] != "/" and os.getcwd().split("/")[-1] == dest_dir.strip("/").split("/")[-1]:
         dest_dir = "."
     print("Using", dest_dir, "as dest_dir")
     run_logs = glob.glob(dest_dir+"/*/run.log")
