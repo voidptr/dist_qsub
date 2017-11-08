@@ -28,8 +28,8 @@ parser.add_option("-r", "--reps", action="store", dest="reps", default=10, type=
 parser.add_option("-c", "--checkpoint", action="store_true", dest="cpr", default=False, help="Restart from checkpoint? WARNING: Only resubmits runs with valid checkpoint")
 parser.add_option("-n", "--nocheckpoint", action="store_true", dest="nocpr", default=False, help="Only include runs without a checkpoint - i.e. those missed by running this with the -c flag")
 parser.add_option("-i", "--infer-missing", action="store_true", dest="infer", default=False, help="Use specified number of reps to find probably missing runs. Experimental.")
-parser.add_option("-l", "--run_list", action = "store", dest = "rl_file", default = "", help = "If set, use the provided run list file to build header.")
-parser.add_option("-t", "--compare-to-run_list", action = "store_true", dest = "comp_to_rl", default = False, help = "If set, test to see if all conditions in the provided run_list that aren't commented out are accounted for.")
+parser.add_option("-l", "--run_list", action="store", dest="rl_file", default="", help="If set, use the provided run list file to build header.")
+parser.add_option("-t", "--compare-to-run-list", action="store_true", dest="comp_to_rl", default=False, help="If set, test to see if all conditions in the provided run_list that aren't commented out are accounted for.")
 
 (options, args) = parser.parse_args()
 
