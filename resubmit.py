@@ -29,6 +29,7 @@ parser.add_option("-c", "--checkpoint", action="store_true", dest="cpr", default
 parser.add_option("-n", "--nocheckpoint", action="store_true", dest="nocpr", default=False, help="Only include runs without a checkpoint - i.e. those missed by running this with the -c flag")
 parser.add_option("-i", "--infer-missing", action="store_true", dest="infer", default=False, help="Use specified number of reps to find probably missing runs. Experimental.")
 parser.add_option("-l", "--run_list", action = "store", dest = "rl_file", default = "", help = "If set, use the provided run list file to build header.")
+parser.add_option("-t", "--compare-to-run_list", action = "store", dest = "comp_to_rl", default = False, help = "If set, test to see if all conditions in the provided run_list that aren't commented out are accounted for.")
 
 (options, args) = parser.parse_args()
 
@@ -169,8 +170,8 @@ for condition in conditions:
                 print("Inferring", name, "seed from run_list")
                 with open(options.rl_file as fp):
                     for line in fp:
-                        if line.split()[1] == name:
-                            seeds = " ".join(line.split()[0])
+                        if line.strip().split()[1] == name:
+                            seeds = line.strip().split()[0]
                             seeds = seeds.split("..")
                 all_seeds = range(int(seeds[0]), int(seeds[1]))
 
@@ -222,5 +223,25 @@ for condition in conditions:
             run_list.write(str(seeds[first])+".."+str(seeds[second]) + " " + name + " " + command + "\n")
 
         first = second + 1
+
+    if options.rl_file != "" and options.comp_to_rl:
+        with open(options.rl_file as fp):
+            for line in fp:
+                sline = line.strip()
+                if sline == "":
+                    continue
+                sline = sline.split()
+                if sline[0] == "set":
+                    continue
+                if sline[0] != "" and sline[0][0] == "#":
+                    continue
+
+                # Okay, that should have filtered out everything that isn't
+                # an experiment specification
+                if len(sline) > 1 and sline[1] not in conditions:
+                    print(sline[1], "in run_list but no results directories found. Adding to resubmit list")
+                    run_list.write(line)
+    elif options.rl_file == "" and options.comp_to_rl:
+        print("Warning: Comparison to run_list requested but no run_list provided. Use the -l flag to provide one")
 
 extinct.write("\n".join(extinct_list))
