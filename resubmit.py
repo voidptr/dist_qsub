@@ -58,8 +58,7 @@ run_list.write(header)
 conditions = {}
 
 if options.rl_file != "":
-    dest_start = header.find("dest_dir")
-    dest_dir = header[dest_start+8:].split("\n")[0]
+    dest_dir = header.partition("dest_dir")[-1].split("\n")[0]
     if os.getcwd().split("/")[-1] == dest_dir.strip("/").split("/")[-1]:
         dest_dir = "."
     print("Using", dest_dir, "as dest_dir")
