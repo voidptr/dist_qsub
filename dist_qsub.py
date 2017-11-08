@@ -127,7 +127,7 @@ if ('class_pref' in settings.keys()):
         feature.append("feature=intel14")
     elif settings['class_pref'] == '200': # intel16
         feature.append("feature=intel16")
-        
+
 if len(feature) > 0:
     l_string.append(":".join(feature))
 
@@ -191,6 +191,7 @@ mv dist_transfer.tar.gz $TARGETDIR/$JOBTARGET
 cd $TARGETDIR/$JOBTARGET
 tar xzf dist_transfer.tar.gz
 rm dist_transfer.tar.gz
+gunzip -r .
 """
 
 script_template_checkpointing = """
