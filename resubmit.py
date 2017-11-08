@@ -159,6 +159,8 @@ for condition in conditions:
     elif options.rl_file != "":
         with open(options.rl_file) as fp:
             for line in fp:
+                if len(line.split()) < 2:
+                    continue
                 if line.split()[1] == name:
                     command = " ".join(line.split()[2:])
 
