@@ -124,7 +124,7 @@ if ('class_pref' in settings.keys()):
     elif settings['class_pref'] == '95': # intel10
         feature.append("feature=intel10")
     elif settings['class_pref'] == '150': # intel14
-        feature.append("feature=intel14")
+        feature.append("feature='css|csp|csn|csm'")
     elif settings['class_pref'] == '200': # intel16
         feature.append("feature=intel16")
 
