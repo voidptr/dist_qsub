@@ -114,7 +114,7 @@ for run in run_logs:
                 split_command = command.split()
                 seed_ind = split_command.index("-s")
                 split_command[seed_ind+1] = "$seed"
-                command = " ".join(split_command)
+                command = " ".join(split_command[:-5]) # -5 to remove piping to run.log
                 command_file.close()
 
                 conditions[condition]["command"] = command
