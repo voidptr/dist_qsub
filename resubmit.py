@@ -176,6 +176,8 @@ for condition in conditions:
                 print("Inferring", name, "seed from run_list")
                 with open(options.rl_file) as fp:
                     for line in fp:
+                        if len(line.strip()) < 2:
+                            continue
                         if line.strip().split()[1] == name:
                             seeds = line.strip().split()[0]
                             seeds = seeds.split("..")
