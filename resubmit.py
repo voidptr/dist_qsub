@@ -62,6 +62,7 @@ if options.rl_file != "":
     dest_dir = header[dest_start+8:].split("\n")[0]
     if os.getcwd().split("/")[-1] == dest_dir.strip("/").split("/")[-1]:
         dest_dir = "."
+    print("Using", dest_dir, "as dest_dir")
     run_logs = glob.glob(dest_dir+"/*/run.log")
 else:
     run_logs = glob.glob("./*/run.log")
