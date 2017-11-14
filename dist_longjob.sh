@@ -238,6 +238,14 @@ checkpoint_timeout() {
     if [ ! "$?" == "0" ]
     then
         echo "Failed to checkpoint."
+	
+	# If there were no successful checkpoints letting this get resubmitted again
+	# won't help. It will have to be resubmitted manually.
+	# TODO: There's probably a way to make that happen automatically
+	if [ ! -f checkpoint.blcr ] && [ ! -f checkpoint_safe.blcr ]
+	then
+	    exit 2
+	fi
         
     fi
     
