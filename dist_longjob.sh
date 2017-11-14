@@ -78,6 +78,14 @@ then
 
 else ## restart an existing job!
 
+    # Double-check that this job isn't already done (someone might have been trying to resubmit other jobs in the array)
+    isdone=`grep -w ${PBS_ARRAYID} ${QSUB_FILE}_done_arrayjobs.txt | wc -l`
+    if [ $isdone -eq 1 ]
+    then
+        echo "Job already done"
+        exit 0
+    fi
+
     # go to the final location, where we should've stashed our checkpoint
     cd $TARGETDIR/$JOBTARGET
 
@@ -230,7 +238,7 @@ checkpoint_timeout() {
     if [ ! "$?" == "0" ]
     then
         echo "Failed to checkpoint."
-        exit 2
+        
     fi
     
     resubmit_array
