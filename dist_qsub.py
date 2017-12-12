@@ -167,6 +167,11 @@ script_template_basic = """
 #PBS -M %email_address%
 #PBS -l epilogue=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 
+DIST_QSUB_DIR=%dist_qsub_dir%
+QSUB_DIR=%qsub_dir%
+QSUB_FILE=%qsub_file%
+MAX_QUEUE=%max_queue%
+
 TARGETDIR=%dest_dir%
 STARTSEED=%start_seed%
 seed=$(($STARTSEED + $PBS_ARRAYID))
@@ -210,7 +215,7 @@ qstat -f ${PBS_JOBID} | grep "used"
 export RET
 
 # Make sure not to submit too many jobs
-current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+current_jobs=$(showq -u `whoami` | tail -2 | head -1 | cut -d " " -f 4)
 echo "There are currently ${current_jobs} jobs in the queue"
 
 if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
