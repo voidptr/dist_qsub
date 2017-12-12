@@ -192,6 +192,37 @@ cd $TARGETDIR/$JOBTARGET
 tar xzf dist_transfer.tar.gz
 rm dist_transfer.tar.gz
 gunzip -r .
+
+cp ${QSUB_FILE} ${QSUB_FILE}_done
+echo "${QSUB_FILE} is done"
+
+#remove lock file
+rm ${QSUB_FILE}_done.lock 2> /dev/null
+echo "Lock removed"
+
+#remove original qsub file so we don't have to keep trying to submit it
+rm ${QSUB_FILE} 2> /dev/null
+echo "Original qsub file removed"
+
+echo "Checking to see if there are more jobs that should be started"
+
+qstat -f ${PBS_JOBID} | grep "used"
+export RET
+
+# Make sure not to submit too many jobs
+current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+echo "There are currently ${current_jobs} jobs in the queue"
+
+if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+then
+    # submits the next job
+    if [ $current_jobs -lt $MAX_QUEUE ]
+    then
+	     echo "Trying to submit another job"
+	     python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
+    fi
+fi
+
 """
 
 script_template_checkpointing = """
