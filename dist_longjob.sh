@@ -233,6 +233,16 @@ resubmit_array() {
 checkpoint_timeout() {
     echo "Timeout. Checkpointing Job"
 
+    # Sometimes, which checkpointing fails, it leaves behind a file called .checkpoint.blcr.tmp, which 
+    # causes all future attempts to run cr_checkpoint to fail. There is no reason that a file like this
+    # should exist immediately before we call cr_checkpoint, so this is a safe time to get rid of it
+    # if necessary.
+    if [ -f .checkpoint.blcr.tmp ]
+    then
+    	echo "Removing .checkpoint.blcr.tmp so it doesn't confuse cr_checkpoint"
+	yes | rm .checkpoint.blcr.tmp
+    fi
+
     time cr_checkpoint --term -f checkpoint.blcr --backup=checkpoint_safe.blcr --kmsg-warning --time 300 $PID
 
     if [ ! "$?" == "0" ]
