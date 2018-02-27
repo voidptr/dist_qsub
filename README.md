@@ -20,7 +20,7 @@ A run_list file is a series of runs of experiments that you want to run on the H
   
   config_dir - the path to a directory that contains configuration files. Will be copied into working directory before run.
   
-  cpr - [default: 0] are these jobs being restarted from existing checkpoints? (can be 0 (False) or 1 (True)). 
+  cpr - [default: 0] Set to 1 if you are resubmitting jobs that have already been checkpointed. 
   
 ```
 
@@ -74,7 +74,12 @@ If the number of jobs in queue (i.e. the total that shows up at the bottom of th
 % qsub [name_of_qsub_file.qsub]
 ```
 
-By default, dist_qsub uses checkpointing to break your experiments into small pieces so they can run faster. Every four hours, the state of your experiment will be saved, the HPCC job running it will be killed, and a new one will be resubmitted in its place to pick up where it left off. This allows experiments to use the short jobs queue. However, there can occasionally be problems with checkpointing. To turn off checkpointing, use the `--nocheckpoint` flag: 
+# Checkpointing
+
+By default, dist_qsub uses checkpointing to break your experiments into small pieces so they can run faster. After the walltime in your run_list header has elasped, the state of your experiment will be saved, the HPCC job running it will be killed, and a new one will be resubmitted in its place to pick up where it left off. If you do this, you should set your wall time to 4 hours, as this allows experiments to use the short jobs queue.
+
+
+However, there can occasionally be problems with checkpointing. To turn off checkpointing, use the `--nocheckpoint` flag: 
 
 ```
 % python path/to/dist_qsub/dist_qsub.py --nocheckpoint
