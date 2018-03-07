@@ -125,6 +125,67 @@ If you accidentally resubmit things that you didn't mean to, your directories wi
 (run this from the directory containing the directories for all of your runs)
 
 
+# Useful bash commands
+
+There are a variety of bash commands that can be helpful in manipulating large quantities of jobs. Here are some of them (if you have more, pull requests are welcomed!):
+
+#### Check progress
+
+It's often nice to know how your jobs are progressing. You can get a quick status report by looking at the last lines of all of the run.log files. From the dest_dir in your run_list, run:
+```
+for filename in */run.log;
+do
+  tail -1 $filename;
+done
+```
+
+Want to know which line belongs to which file? Print out the filename too:
+```
+for filename in */run.log;
+do
+  echo $filename;
+  tail -1 $filename;
+done
+```
+
+Have a lot of jobs and just want an over-all summary of how many are done? Combine the for loop with grep and wc (word count)! For instance, if all of your jobs output the current time step and you want them to get to time step 1000, you could use:
+```
+for filename in */run.log; do tail -1 $filename; done | grep 1000 | wc -l
+```
+
+Want to know if any of your runs died? This can get a little challenging, since dist_qsub can recover from most crashes that the HPCC would e-mail you about, and simply counting the number of jobs in your queue can be ineffective with all of the placeholder jobs. The most straightforward way is to append a message to the end of the run.log file and then check back later to see if its still the last line. Of course, you don't want to do this to jobs that are already done. This script will append a line that says "running" to the end of all run.log files that are not done yet. In order for it to do this, it needs you to tell it what to look for in the last line of the run.log file to know the run is done (here it is looking for "1000" - replace "1000" with whatever you want to check for). It should be run from the dest_dir in your run_list:
+```
+for filename in */run.log; 
+do 
+  done=`tail -1 $filename | grep 1000 | wc -l`; 
+  if [ $done -ne 1 ]; 
+  then 
+    echo "running" > $filename; 
+  fi;
+done
+```
+A bit later, you can check for any jobs that haven't written new lines to their run.log file with:
+
+```
+for filename in */run.log; do tail -1 $filename; done | grep running | wc -l
+```
+This will give you the count of jobs that are not currently running (assuming you waited long enough that all of your runs should have printed another line). Note that just because a job isn't currently running doesn't necessarily mean it won't recover. If, however, a job does not recover for over 4 hours, has failed before its first checkpoint, or no other jobs in its group of seeds are running then something has gone wrong and it will need to be manually restarted.
+
+#### Delete all jobs from a specific group
+Did you just learn that there's an error in your executable? Screw up your configs? There are many cases where you might want to kill all of the jobs from a specific experiment without affecting other jobs you ay be running. In these cases, you can go to the dest_dir specified in the run_list for those jobs and run the following commands (warning: this will kill all of the jobs writing to that destination directory, so make sure that's what you want):
+```
+cd qsub_files
+for line in `cat *successor_jobs.txt` ; do echo $line[]; done | xargs qdel
+```
+This may produce some warnings about nonexistant job ids, but that's okay.
+
+If you don't want to kill **all** jobs corresponding to that destination directory, you can add a more specific pattern before "`*successors_jobs.txt`". For example, if your run_list had three conditions named mutationrate_.01, mutationrate_.001, and mutationrate_.0001 and you only wanted to kill jobs from the last two, you could use ```for line in `cat mutation_rate_.00*successor_jobs.txt` ; do echo $line[]; done | xargs qdel```
+
+Note, this will only work if you are running your jobs in checkpoint mode as it takes advantage of the extra book-keeping that checkpointing requires.
+
+#### Restore backups
+When you submit jobs that write to directories that already exist, dist_qsub will move the existing directories to new directories with ```_bak``` appended to the end of their names so that you don't lose data. But sometimes you didn't mean to submit that new job in the first place and would like to rename the backup directories to have their original names. If you delete the newly created directories that you don't want, you can use the `restore_backups.sh` script in this repository to move all backup directories back to their original names. Specifically, it will move directories with names like `xyz_bak` to the corresponding original name (`xyz`, in this case) if and only if there is not already a directory with that name. restore_backups should be run from the dest_dir that has the backups you are trying to restore.
+
 # Notes on recovering from checkpoint failures
 
 There are a number of things that can go wrong with checkpointing. As such, there are a number of layers of recovery built in:
