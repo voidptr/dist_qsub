@@ -25,7 +25,7 @@ In the run_list file, currently supported "set" options are:
   dest_dir - (required) the path to the output directory
   cpr - [default: 0] are these jobs being restarted from existing checkpoints (can be 0 (False) or 1 (True))
   config_dir - the path to a directory that contains configuration files. Will be copied into working directory before run.
-
+  ppn - the number of cores to request (default 1)
 """
 parser = OptionParser(usage)
 parser.add_option("-p", "--printonly", action="store_true", dest="printonly",
@@ -87,6 +87,9 @@ if not "dest_dir" in settings.keys():
 
 if not "cpr" in settings.keys():
     settings["cpr"] = "0"
+
+if not "ppn" in settings.keys():
+    settings["ppn"] = "1"
 
 for command in processes:
     bits = command[2].split(";")
@@ -160,6 +163,7 @@ script_template_basic = """
 #!/bin/bash -login
 #PBS -q main
 #PBS -l %lstring%
+#PBS -l nodes=1:ppn=%ppn%
 #PBS -N %jobname%
 #PBS -o %dest_dir%/%jobname%_message.log
 #PBS -j oe
@@ -234,6 +238,7 @@ script_template_checkpointing = """
 #!/bin/bash -login
 #PBS -q main
 #PBS -l %lstring%
+#PBS -l nodes=1:ppn=%ppn%
 #PBS -N %jobname%
 #PBS -o %dest_dir%/%jobname%_message.log
 #PBS -j oe
@@ -283,6 +288,7 @@ script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
 script_template = script_template.replace( "%max_queue%", str(options.max_queue))
 script_template = script_template.replace( "%cpr%", settings["cpr"])
+script_template = script_template.replace( "%ppn%", settings["ppn"])
 
 
 if not os.path.exists(dest_dir):

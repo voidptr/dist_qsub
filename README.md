@@ -22,6 +22,8 @@ A run_list file is a series of runs of experiments that you want to run on the H
 
   cpr - [default: 0] Set to 1 if you are resubmitting jobs that have already been checkpointed.
 
+  ppn - the number of cores to request (default 1)
+
 ```
 
 After the header, provide a list of experiments to run, each one on its own line. The format is:
