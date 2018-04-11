@@ -7,21 +7,21 @@ A run_list file is a series of runs of experiments that you want to run on the H
 
 ```
   email - (required) the email address for HPCC messages (crashes only)
-  
+
   email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.
-  
-  class_pref - Set this to 200 unless you know what you're doing. Supported classes 91, 92, 95, 150 (intel14), 200 (intel16). 
-  
+
+  class_pref - Set this to 200 unless you know what you're doing. Supported classes 91, 92, 95, 150 (intel14), 200 (intel16).
+
   walltime - ints only, in hours. If you're using checkpointing, this should be 4.
-  
+
   mem_request - in gigabytes
-  
+
   dest_dir - (required) the path to the output directory. All of the results will be placed in sub-directories within this directory.
-  
+
   config_dir - the path to a directory that contains configuration files. Will be copied into working directory before run.
-  
-  cpr - [default: 0] Set to 1 if you are resubmitting jobs that have already been checkpointed. 
-  
+
+  cpr - [default: 0] Set to 1 if you are resubmitting jobs that have already been checkpointed.
+
 ```
 
 After the header, provide a list of experiments to run, each one on its own line. The format is:
@@ -79,7 +79,7 @@ If the number of jobs in queue (i.e. the total that shows up at the bottom of th
 By default, dist_qsub uses checkpointing to break your experiments into small pieces so they can run faster. After the walltime in your run_list header has elasped, the state of your experiment will be saved, the HPCC job running it will be killed, and a new one will be resubmitted in its place to pick up where it left off. If you do this, you should set your wall time to 4 hours, as this allows experiments to use the short jobs queue.
 
 
-However, there can occasionally be problems with checkpointing. To turn off checkpointing, use the `--nocheckpoint` flag: 
+However, there can occasionally be problems with checkpointing. To turn off checkpointing, use the `--nocheckpoint` flag:
 
 ```
 % python path/to/dist_qsub/dist_qsub.py --nocheckpoint
@@ -155,12 +155,12 @@ for filename in */run.log; do tail -1 $filename; done | grep 1000 | wc -l
 
 Want to know if any of your runs died? This can get a little challenging, since dist_qsub can recover from most crashes that the HPCC would e-mail you about, and simply counting the number of jobs in your queue can be ineffective with all of the placeholder jobs. The most straightforward way is to append a message to the end of the run.log file and then check back later to see if its still the last line. Of course, you don't want to do this to jobs that are already done. This script will append a line that says "running" to the end of all run.log files that are not done yet. In order for it to do this, it needs you to tell it what to look for in the last line of the run.log file to know the run is done (here it is looking for "1000" - replace "1000" with whatever you want to check for). It should be run from the dest_dir in your run_list:
 ```
-for filename in */run.log; 
-do 
-  done=`tail -1 $filename | grep 1000 | wc -l`; 
-  if [ $done -ne 1 ]; 
-  then 
-    echo "running" > $filename; 
+for filename in */run.log;
+do
+  done=`tail -1 $filename | grep 1000 | wc -l`;
+  if [ $done -ne 1 ];
+  then
+    echo "running" > $filename;
   fi;
 done
 ```
@@ -192,9 +192,9 @@ There are a number of things that can go wrong with checkpointing. As such, ther
 
 * Sometimes the process of creating a checkpoint fails for inexplicable reasons. This generally results in a corrupted `checkpoint.blcr` file. To combat this, dist_qsub always maintains a backup checkpoint file in `checkpoint_safe.blcr` (with the exception that there can't be a backup the first time the job is checkpointed). If restarting from the main checkpoint file fails, this backup will be tried.
 * Sometimes the job restarts on a node that is not compatible with the node it was running on beforehand. This usually reuslts in a seg-fault on checkpoint restart. Setting features=intel16 or features=intel14 (accomplished by setting class_pref to 150 or 200 in the run_list file) dramatically reduces the possibility of this happening, but there are still a few different node types within those groups, some of which are incompatible. It's possible there is a more precise set of features that can be requested to prevent this. For now, if both the main checkpoint and the backup checkpoint fail, the job will resubmit itself up to two times in hopes of winding up on a more appropriate node.
-* Sometimes something unexpected happens and a job just dies. To recover from this, when the new set of jobs is created at the end of four hours, dist_qsub checks for any sub-jobs that are not yet completed but are also not running. If it finds any, it restarts them. 
+* Sometimes something unexpected happens and a job just dies. To recover from this, when the new set of jobs is created at the end of four hours, dist_qsub checks for any sub-jobs that are not yet completed but are also not running. If it finds any, it restarts them.
 
-If all of this fails, you may need to resubmit your jobs manually. You can do this using resubmit.py, as described above. You can also manually create a run_list file containing the jobs you want to resubmit. If you want these jobs to restart from existing checkpoint files, rather than starting over from the beginning, add `set cpr 1` to the header of this run_list file. 
+If all of this fails, you may need to resubmit your jobs manually. You can do this using resubmit.py, as described above. You can also manually create a run_list file containing the jobs you want to resubmit. If you want these jobs to restart from existing checkpoint files, rather than starting over from the beginning, add `set cpr 1` to the header of this run_list file.
 
 Advanced note: In some situations, it may be most expedient to just resubmit an individual qsub file generated by dist_qsub.py. If you want it to restart fro an existing checkpoint file change `export CPR=0` at the top to `export CPR=1`.
 
@@ -207,4 +207,3 @@ dist_qsub seeks to resolve all three of these issues. The primary goal of the di
 Based on the environment variables, dist_longjob.sh either configures the directory and starts the job, or immediately restarts from an existing checkpoint file. Then it sets a timer for just under the allowed walltime and waits. If the job finished, it records this in the dest_dir/qsub_files/qsub_file_name_donearray_jobs.txt file. If the job isn't done after the timer is up, it needs to be resubmitted. The tricky part is that whereas longjob.sh works be resubmitting a copy of itself after the time is up, dist_longjob.sh has to make sure that one new array of jobs is submitted per array that finishes. So one job in the array (generally the first to finish) is made responsible for this. All jobs in the array that don't have a finished predecessor yet are put in the "hold" state and released by the corresponding job when it finishes. As a result, it's possible for some jobs in the array to get far ahead of others, resulting in a lot of waiting jobs. The list of job ids associated with a given line in the run_list file is stored in dest_dir/qsub_files/qsub_file_name_successor_jobs.txt.
 
 The final component of dist_qsub is a scheduler (scheduler.py) that keeps track of which arrays are completely done and which ones have yet to be run. When an array finishes, if there is space in the queue (as indicated by the MAX_QUEUE variable), a new array (i.e. a new line from the original run_list) is submitted. It's important to be conservative when determining if there is space in the queue, because creating arrays for jobs that aren't finished running yet means that a single run of avida can take up many spots in the queue. If this causes the queue to fill up, confusing errors can result. The default MAX_QUEUE is set to be the maximum number of jobs a user is allowed to have running at once (which is conveniently around half of the cap of 1000 on the number of total jobs you are allowed to have queued.
-
