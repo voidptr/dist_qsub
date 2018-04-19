@@ -1,6 +1,14 @@
 dist_qsub: HPCC DevoLab dist_run replacement
 ===========================================
 
+# Installation
+
+dist_qsub is not installed on the HPCC by default. To use it, clone this repository to your HPCC account with the command:
+
+```
+git clone https://github.com/emilydolson/dist_qsub.git
+```
+
 # Creating a run_list file
 
 A run_list file is a series of runs of experiments that you want to run on the HPCC. It starts with a header, which specifies various settings:
