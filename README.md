@@ -84,6 +84,15 @@ If the number of jobs in queue (i.e. the total that shows up at the bottom of th
 % qsub [name_of_qsub_file.qsub]
 ```
 
+## Full list of command-line options:
+
+- **-h** - display help
+- **-p** - print only mode (write qsub files without submitting them)
+- **-v** - verbose mode. Prints extra information.
+- **-d** - debug_messages. Prints debugging messages
+- **--nocheckpoint** - Do not use checkpointing (can be simpler if you aren't running long jobs)
+- **-m [number]** - Specify the maximum number of jobs dist_qsub should put in the queue.
+
 # Checkpointing
 
 By default, dist_qsub uses checkpointing to break your experiments into small pieces so they can run faster. After the walltime in your run_list header has elasped, the state of your experiment will be saved, the HPCC job running it will be killed, and a new one will be resubmitted in its place to pick up where it left off. If you do this, you should set your wall time to 4 hours, as this allows experiments to use the short jobs queue.
