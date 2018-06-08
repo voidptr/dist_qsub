@@ -43,7 +43,7 @@ parser.add_option("--nocheckpoint", action = "store_true",
 
 parser.add_option("-m", "--max-queue", action = "store",
                   dest="max_queue", default=535,
-    help="How many jobs should be queued beforeinvoking additional scheduler?")
+    help="How many jobs should be queued before invoking additional scheduler?")
 ## fetch the args
 (options, args) = parser.parse_args()
 
@@ -314,6 +314,8 @@ for command in processes:
 
         if job_ct > 99999 or job_ct < 1:
             exit("Seeds defined in " + command[0] + " are negative or invalid")
+	if jb_ct > 100 and not options.nocheckpoint:
+		exit("DO NOT USE CHECKPOINTING WITH ARRAYS LARGER THAN 100!!! Reduce number of treatments per condition or use the --nocheckpoint flag")
 
         command_final = command_final.replace( "%start_seed%", str(start_seed))
         command_final = command_final.replace( "%job_seeds%", job_seeds)
