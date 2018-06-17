@@ -314,7 +314,7 @@ for command in processes:
 
         if job_ct > 99999 or job_ct < 1:
             exit("Seeds defined in " + command[0] + " are negative or invalid")
-	if jb_ct > 100 and not options.nocheckpoint:
+	if job_ct > 100 and not options.nocheckpoint:
 		exit("DO NOT USE CHECKPOINTING WITH ARRAYS LARGER THAN 100!!! Reduce number of treatments per condition or use the --nocheckpoint flag")
 
         command_final = command_final.replace( "%start_seed%", str(start_seed))
