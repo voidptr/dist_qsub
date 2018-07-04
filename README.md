@@ -106,9 +106,17 @@ However, there can occasionally be problems with checkpointing. To turn off chec
 Note that, for efficiency, this will keep all data associated with the experiment on the compute node where it's being run until the end, at which point it will be transferred to `dest_dir`. This means that you will not be able to view the output until the job is over (and if you specify an inadequate walltime, the job will run out of time before it can copy anything and you will not be able to see any results).
 
 
+## Checkpoint errors: when should you worry?
+
+dist_qsub will do everything in its power to recover from failed attempts to make a checkpoint. You should only step in if:
+
+- The last thing in run.log file is an error like this: `“Failed to open(checkpoint.blcr, O_RDONLY): No such file or directory”`. That means something went wrong before the first checkpoint was successfully made. If this happens, the first step is to make sure your program didn't encounter an internal error. Once you are sure that this is not the case, you can recover from this scenario by running the `dist_qsub/fix_early_fails.sh` script in `dest_dir`. This command will take a while - it is running the first 10 seconds of your program in every directory where checkpointing failed to create a checkpoint file to restart from. Once you have done this, assuming other jobs in the array are still running, the auto-recovery mechanisms should take over.
+- All of the jobs from a given array are dead (figure this out with the command in "Get a list of qsub files without any jobs running" under the "Useful bash commands" section of this readme). If this happens, you should re-submit that set of jobs with `cpr` set to 1 (again, do this only if you are sure the error was the fault of your cluster not your code).
+- An individaul job has failed to restart for 8 or more hours. This points to a problem with that specific job.
+
 # Resubmitting
 
-Sometimes runs die. It is a fact of life. `resubmit.py` can help you figure out which runs died, and painlessly re-run them. It will look at your output files and make sure that that output files for all of your conditions go to the correct number of updates. By default, `resubmit.py` assumes the correct number of updates is 100,000. If you ran your experiments for a different length of time, you should use the `-u` flag to let `resubmit.py` know:
+Sometimes runs die. It is a fact of life. `resubmit.py` can help you figure out which runs died, and painlessly re-run them (although if you are using checkpointing, be aware that there are a lot of auto-recovery mechanisms in place). It will look at your output files and make sure that that output files for all of your conditions go to the correct number of updates. By default, `resubmit.py` assumes the correct number of updates is 100,000. If you ran your experiments for a different length of time, you should use the `-u` flag to let `resubmit.py` know:
 
 ```
 % python path/to/dist_qsub/resubmit.py -u [number_of_updates]
@@ -201,6 +209,26 @@ This may produce some warnings about nonexistant job ids, but that's okay.
 If you don't want to kill **all** jobs corresponding to that destination directory, you can add a more specific pattern before "`*successors_jobs.txt`". For example, if your run_list had three conditions named mutationrate_.01, mutationrate_.001, and mutationrate_.0001 and you only wanted to kill jobs from the last two, you could use ```for line in `cat mutation_rate_.00*successor_jobs.txt` ; do echo $line[]; done | xargs qdel```
 
 Note, this will only work if you are running your jobs in checkpoint mode as it takes advantage of the extra book-keeping that checkpointing requires.
+
+#### Get a list of qsub files without any jobs running
+Recovery mechanisms only work if there is at least 1 job from an array running. To get a list of all qsub files that no longer have any associated jobs running, run this command in your `qsub_files` directory:
+
+```
+for filename in *successor_jobs.txt; 
+do 
+  count=0; 
+  for line in `cat $filename`; 
+  do 
+    count=`expr $count + $(qs | grep $line | wc -l)`;
+  done; 
+  if [[ $count == 0 ]]; 
+  then 
+    echo "$filename is no longer running"; 
+  fi; 
+done
+```
+
+You can then compare this list against the jobs that are actually done.
 
 #### Restore backups
 When you submit jobs that write to directories that already exist, dist_qsub will move the existing directories to new directories with ```_bak``` appended to the end of their names so that you don't lose data. But sometimes you didn't mean to submit that new job in the first place and would like to rename the backup directories to have their original names. If you delete the newly created directories that you don't want, you can use the `restore_backups.sh` script in this repository to move all backup directories back to their original names. Specifically, it will move directories with names like `xyz_bak` to the corresponding original name (`xyz`, in this case) if and only if there is not already a directory with that name. restore_backups should be run from the dest_dir that has the backups you are trying to restore.
