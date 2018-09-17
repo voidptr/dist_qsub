@@ -11,7 +11,7 @@
 ## Setup and Environment Variables
 
 # Set the default wait time to just under four hours
-export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 6 * 60 ))
+export BLCR_WAIT_SEC=$(( 4 * 60 * 60 - 600 ))
 #export BLCR_WAIT_SEC=30 # 90 seconds for testing
 
 # these variables must be passed in via qsub -v, or be exported in the environment
@@ -34,11 +34,13 @@ echo CPR $CPR
 echo EMAILSCRIPT $EMAILSCRIPT
 echo USESCRATCH $USESCRATCH
 echo DIST_QSUB_DIR $DIST_QSUB_DIR
+echo QSUB_DIR $QSUB_DIR
 echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
 
-user=$(whoami)
 
+user=$(whoami)
+timeout_retries=0
 ###### get the job going
 if [ $CPR -eq "0" ] ## initial
 then
@@ -64,6 +66,11 @@ then
     echo $JOBCOMMAND >> command.sh
     chmod 755 ./command.sh
 
+
+    # Add this ID to the list of ids associated with this chunk of jobs
+    trimmedid=`echo ${PBS_JOBID} | rev | cut -d[ -f2- | rev`
+    echo $trimmedid >> ${QSUB_FILE}_successor_jobs.txt
+
     # and run it with cr_run
 
     cr_run ./command.sh 1> run.log 2>&1 &
@@ -71,13 +78,21 @@ then
 
 else ## restart an existing job!
 
+    # Double-check that this job isn't already done (someone might have been trying to resubmit other jobs in the array)
+    isdone=`grep -w ${PBS_ARRAYID} ${QSUB_FILE}_done_arrayjobs.txt | wc -l`
+    if [ $isdone -eq 1 ]
+    then
+        echo "Job already done"
+        exit 0
+    fi
+
     # go to the final location, where we should've stashed our checkpoint
     cd $TARGETDIR/$JOBTARGET
 
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
-    cr_restart --no-restore-pid --file checkpoint.blcr >> run.log 2>&1 &
+    cr_restart --no-restore-pid --run-on-fail-temp="echo temp_fail" --run-on-fail-perm="echo perm_fail" --run-on-fail-env="echo env_fail" --run-on-fail-temp="echo args_fail" --run-on-success="echo Success" --file checkpoint.blcr >> run.log 2>&1 &
     PID=$!
 fi
 
@@ -90,26 +105,7 @@ copy_out() {
     rm dist_transfer.tar.gz
 }
 
-checkpoint_timeout() {
-    echo "Timeout. Checkpointing Job"
-
-    time cr_checkpoint --term $PID
-
-    if [ ! "$?" == "0" ]
-    then
-        echo "Failed to checkpoint."
-        exit 2
-    fi
-
-    #Make a copy of the checkpoint file so it doesn't get corrupted
-    #if bad things happen
-    if [ -f checkpoint.blcr ]
-    then
-	     mv checkpoint.blcr checkpoint_safe.blcr
-    fi
-
-    # rename the context file
-    mv context.${PID} checkpoint.blcr
+resubmit_array() {
 
     ## calculate what the successor job's name should be
 
@@ -154,12 +150,51 @@ checkpoint_timeout() {
                 rm $TARGETDIR/$sname.* # clean up
 
                 ### Grab the ID of the job we just made and stuff it into the jobs file
-                ### It won't include the current job ID if it was the original submitted job
-                ### TODO -- add this to the dist_qsub.py script.
+                ### Original ID should have already been added above
                 echo "qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev"
                 mysid=`qstat -u $PBS_O_LOGNAME | grep "$sname" | awk '{print \$1}' | rev | cut -d[ -f2- | rev`
                 echo $mysid >> ${QSUB_FILE}_successor_jobs.txt
-
+		
+		# Attempt to restart any orphaned jobs (i.e. jobs that should run but that don't have any jobs around
+		# that could possibly start them - this happens if the precursor dies in a weird way)
+		# Start by iterating over all jobs in the current array that are still in the held state
+		# (since it's suspicious that they haven't even started running and this one is already done)
+		for jid in $(qselect -s H -u $PBS_O_LOGNAME | grep $trimmedid | cut -d '[' -f 2 | cut -d ']' -f 1)
+		do 
+		    # If this job is already completely done, go to the next iteration so we don't accidentally restart it
+		    isdone=`grep -w $jid ${QSUB_FILE}_done_arrayjobs.txt | wc -l`
+		    if [ $isdone -ge 1 ]
+		    then
+		    	continue
+		    fi
+		    
+		    running=0
+		    echo "Checking for orphaned jobs. JID:" $jid
+		    while read suc || [[ -n $suc ]]
+		    do 
+		        # Is this job id running in any prior array? If so, it just got really far behind. No action required.
+		        running=$(expr $running + `qstat -t $suc[$jid] | tail -n +3 | tr -s ' ' | cut -f 5 -d " " | grep "R" | wc -l`)
+		    done <${QSUB_FILE}_successor_jobs.txt
+		    
+		    if [ $running -lt 1 ] 
+		    then 
+		        echo "Job isn't running. Restarting it"
+		
+			# Cleanup any jobs that were supposed to run this but never got released - we're in charge now
+			while read suc || [[ -n $suc ]]
+		    	do 
+		            if [ $suc -ne ${mysid} ]
+			    then
+			    	qdel ${suc}[$jid]
+			    fi
+		    	done <${QSUB_FILE}_successor_jobs.txt
+			
+			# Run the job
+			echo qrls -t $jid ${mysid}[]
+			qrls -t $jid ${mysid}[]
+		    fi
+		done
+		
             else
                 # oop, lost the race
                 echo "Lost the race, letting winner do the thing."
@@ -187,12 +222,44 @@ checkpoint_timeout() {
     do
         while read p || [[ -n $p ]]
         do
-            echo qdel -t $p ${sid}[]
-            qdel -t $p ${sid}[]
+            echo qdel ${j}[$p]
+            qdel ${j}[$p]
         done <${QSUB_FILE}_done_arrayjobs.txt
     done <${QSUB_FILE}_successor_jobs.txt
 
     echo "Done with Timeout and Checkpoint Processing"
+}
+
+checkpoint_timeout() {
+    echo "Timeout. Checkpointing Job"
+
+    # Sometimes, which checkpointing fails, it leaves behind a file called .checkpoint.blcr.tmp, which 
+    # causes all future attempts to run cr_checkpoint to fail. There is no reason that a file like this
+    # should exist immediately before we call cr_checkpoint, so this is a safe time to get rid of it
+    # if necessary.
+    if [ -f .checkpoint.blcr.tmp ]
+    then
+    	echo "Removing .checkpoint.blcr.tmp so it doesn't confuse cr_checkpoint"
+	yes | rm .checkpoint.blcr.tmp
+    fi
+
+    time cr_checkpoint --term -f checkpoint.blcr --backup=checkpoint_safe.blcr --kmsg-warning --time 300 $PID
+
+    if [ ! "$?" == "0" ]
+    then
+        echo "Failed to checkpoint."
+	
+	# If there were no successful checkpoints letting this get resubmitted again
+	# won't help. It will have to be resubmitted manually.
+	# TODO: There's probably a way to make that happen automatically
+	if [ ! -f checkpoint.blcr ] && [ ! -f checkpoint_safe.blcr ]
+	then
+	    exit 2
+	fi
+        
+    fi
+    
+    resubmit_array
 }
 
 # begin checkpoint timeout, which will go in the background.
@@ -214,16 +281,25 @@ RET=$?
 ############### NOW WE WAIT ###################################################
 ###############################################################################
 
+
+
+handle_didnt_timeout() {
 # Ooh, we're executing again. Something musta happened.
 # Check to see if we're moving along again because the job checkpointed
 if [ "${RET}" = "143" ] #Job terminated due to cr_checkpoint
 then
-	echo "AWAKE - Job seems to have been checkpointed, waiting for checkpoint_timeout function to finish processing."
+
+  # Clear repeated failure tracker
+  rm last_failed 2> /dev/null
+  rm last_two_failed 2> /dev/null
+  
+  echo "AWAKE - Job seems to have been checkpointed, waiting for checkpoint_timeout function to finish processing."
   wait ${timeout}
   echo "See you next time around..."
   exit 0
 fi
 
+echo "$timeout_retries timeouts"
 # ELSE:
 ######################### JOB COMPLETED ##############################
 # We're actually executing again because the job finished (no checkpointing).
@@ -232,23 +308,100 @@ fi
 #    2. The job crashed on checkpoint restart, as in, it never started up. :(
 # Either way, we have some cleanup to do. :/
 
-echo "Sub-job seems to have finished. Here's the return code: "
-echo ${RET}
-
-if [ "${RET}" = "132" ] #Job terminated due to cr_checkpoint
-then
-	echo "CRASH - Job seems to have crashed, but it's unclear how."
-    echo "TODO -- add some kind of crash recovery."
-fi
-
-
 #Kill timeout timer
 kill ${timeout} # prevent it from doing anything dumb.
 
+echo "Sub-job seems to have finished. Here's the return code: "
+echo ${RET}
+
+if [ "${RET}" = "132" ] || [ "${RET}" = "139" ]  #Job terminated due to cr_checkpoint
+then
+    echo "CRASH - Job seems to have crashed, but it's unclear how."
+    echo "Attempting crash recovery. Retries: $timeout_retries"
+
+    #If we have a checkpoint_safe file and using it hasn't already failed
+    #give that a shot
+    if [ -f checkpoint.blcr ] && [ $timeout_retries -lt 2 ]
+    then
+      echo "Restarting..."
+      mv checkpoint.blcr checkpoint_tried.blcr
+      cr_restart --no-restore-pid --run-on-fail-temp="echo temp_fail" --run-on-fail-perm="echo perm_fail" --run-on-fail-env="echo env_fail" --run-on-fail-temp="echo args_fail" --run-on-success="echo Success" --file checkpoint_tried.blcr >> run.log 2>&1 &
+      PID=$!
+
+      #debugging
+      touch attempted_recovery_check_$PID
+      timeout_retries=$(expr $timeout_retries + 1)
+
+      #Dividing it by 2 is probably overkill - just trying to play it safe.
+      (sleep $(expr $BLCR_WAIT_SEC / 2); echo 'Timer Done'; checkpoint_timeout;) &
+      timeout=$!
+      echo "starting timer (${timeout}) for $BLCR_WAIT_SEC / 2 seconds"
+
+      echo "Waiting on cr_run job: $PID"
+      echo "ZZzzzzz"
+      wait ${PID}
+      RET=$?
+      handle_didnt_timeout
+
+    elif [ -f checkpoint_safe.blcr ] && [ $timeout_retries -lt 3 ]
+    then
+	    echo "Restarting..."
+      mv checkpoint_safe.blcr checkpoint_safe_tried.blcr
+      cr_restart --no-restore-pid --run-on-fail-temp="echo temp_fail" --run-on-fail-perm="echo perm_fail" --run-on-fail-env="echo env_fail" --run-on-fail-temp="echo args_fail" --run-on-success="echo Success" --file checkpoint_safe_tried.blcr >> run.log 2>&1 &
+	    PID=$!
+
+	    #debugging
+	    touch attempted_recovery_checksafe_$PID
+      timeout_retries=$(expr $timeout_retries + 1)
+
+      #Dividing it by 2 is probably overkill - just trying to play it safe.
+	    (sleep $(expr $BLCR_WAIT_SEC / 2); echo 'Timer Done'; checkpoint_timeout;) &
+	    timeout=$!
+	    echo "starting timer (${timeout}) for $BLCR_WAIT_SEC / 2 seconds"
+
+	    echo "Waiting on cr_run job: $PID"
+	    echo "ZZzzzzz"
+	    wait ${PID}
+	    RET=$?
+	    handle_didnt_timeout
+    fi
+
+    #debugging
+    if [ $timeout_retries -eq 3 ]
+    then
+	    touch array_resubmited_$PID
+    	    echo "Restoring checkpoint files since it's unlikely they're both corrupted. This was probably caused by something else, like running on the wrong node"
+	    mv checkpoint_safe_tried.blcr checkpoint_safe.blcr
+	    mv checkpoint_tried.blcr checkpoint.blcr
+	    
+	    if [ -f last_failed ]
+	    then
+	    	
+		if [ -f last_two_failed ]
+		then
+		    echo "Third array resubmit fail in a row... this isn't working"
+		    echo "Letting this job die. Maybe it will get recovered by another job"
+		    rm last_failed
+		    rm last_two_failed
+		    touch complete_array_resubmit_failure
+		    exit 0
+		fi
+		echo "Hmmm... second array resubmit fail in a row. This isn't looking good."	    
+	        touch last_two_failed
+	    else
+	        touch last_failed
+	    fi
+	    
+	    echo "Resubmitting array... hopefully this will work next time around"
+	    resubmit_array
+    fi
+
+    exit 0
+fi
+
+
 echo "Cleanup time"
 
-## mark our job as being complete, so it gets cleaned up in later iterations.
-echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
 
 ## delete our successor job, should there be one
 # trim out the excess after the [ from the jobID
@@ -278,11 +431,19 @@ fi
 echo "Deleting all other unneeded successor subjobs."
 while read j || [[ -n $j ]]
 do
+    # Sucessors for jobs that have already been marked as done
     while read p || [[ -n $p ]]
     do
-        echo qdel -t $p $j[]
-        qdel -t $p $j[]
+    	echo qdel $j[$p]
+        qdel $j[$p]
     done <${QSUB_FILE}_done_arrayjobs.txt
+
+    # Delete this job from other arrays
+    if [ $j -ne $trimmedid ]
+    then
+	qdel $j[${PBS_ARRAYID}]
+    fi
+
 done <${QSUB_FILE}_successor_jobs.txt
 
 #Notify the email script that we're done.
@@ -292,34 +453,43 @@ $EMAILSCRIPT $PBS_JOBID $USER " " $JOBNAME
 echo "Sub-job completed with exit status ${RET}"
 
 
-############ COMMENTED OUT FOR SAFETY ##################
-## Don't expect that this will submit unsubmitted jobs #
-## The below doesn't do what you think it does.        #
-########################################################
-
 #create task finished file
-#cp ${QSUB_FILE} ${QSUB_FILE}_done
+cp ${QSUB_FILE} ${QSUB_FILE}_done
+echo "${QSUB_FILE} is done"
 
 #remove lock file
-#rm ${QSUB_FILE}_done.lock
+rm ${QSUB_FILE}_done.lock 2> /dev/null
+echo "Lock removed"
+
 #remove original qsub file so we don't have to keep trying to submit it
-#rm ${QSUB_FILE}
+rm ${QSUB_FILE} 2> /dev/null
+echo "Original qsub file removed"
 
+echo "Checking to see if there are more jobs that should be started"
 
-#echo "Checking to see if there are more jobs that should be started"
-
-#qstat -f ${PBS_JOBID} | grep "used"
-#export RET
+qstat -f ${PBS_JOBID} | grep "used"
+export RET
 
 # Make sure not to submit too many jobs
-#current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+echo "There are currently ${current_jobs} jobs in the queue"
 
-#if [ ! -f $DIST_QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
-#then
-#    # submits the next job
-#    if [ $current_jobs -lt $MAX_QUEUE ]
-#    then#
-#	echo "Trying to submit another job"
-#	python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID}
-#    fi
-#fi
+if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+then
+    # submits the next job
+    if [ $current_jobs -lt $MAX_QUEUE ]
+    then
+	     echo "Trying to submit another job"
+	     python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
+    fi
+fi
+
+## mark our job as being complete, so it gets cleaned up in later iterations.
+## This happens at the very end so no other jobs try to clean it up while it's still doing cleanup
+echo $PBS_ARRAYID >> ${QSUB_FILE}_done_arrayjobs.txt
+
+}
+
+timeout_retries=$(expr $timeout_retries + 1)
+handle_didnt_timeout
+echo "Done with everything"

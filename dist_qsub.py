@@ -19,14 +19,13 @@ In the run_list file, currently supported "set" options are:
 
   email - (required) the email address for HPCC messages (crashes only)
   email_when - [default: final, always] email when the whole job finishes only (default), or an email for every sub-job ("always"). Note, these emails only go to USERNAME@msu.edu. Sorry.
-  class_pref - supported classes 91, 92, 95, 150
+  class_pref - supported classes 91, 92, 95, 150 (intel14), 200 (intel16)
   walltime - ints only, in hours
   mem_request - in gigabytes
   dest_dir - (required) the path to the output directory
-
-Currently unsupported, but planned options:
-  config_dir
-
+  cpr - [default: 0] are these jobs being restarted from existing checkpoints (can be 0 (False) or 1 (True))
+  config_dir - the path to a directory that contains configuration files. Will be copied into working directory before run.
+  ppn - the number of cores to request (default 1)
 """
 parser = OptionParser(usage)
 parser.add_option("-p", "--printonly", action="store_true", dest="printonly",
@@ -44,7 +43,7 @@ parser.add_option("--nocheckpoint", action = "store_true",
 
 parser.add_option("-m", "--max-queue", action = "store",
                   dest="max_queue", default=535,
-    help="How many jobs should be queued beforeinvoking additional scheduler?")
+    help="How many jobs should be queued before invoking additional scheduler?")
 ## fetch the args
 (options, args) = parser.parse_args()
 
@@ -89,6 +88,9 @@ if not "dest_dir" in settings.keys():
 if not "cpr" in settings.keys():
     settings["cpr"] = "0"
 
+if not "ppn" in settings.keys():
+    settings["ppn"] = "1"
+
 for command in processes:
     bits = command[2].split(";")
     newcomm = []
@@ -125,7 +127,9 @@ if ('class_pref' in settings.keys()):
     elif settings['class_pref'] == '95': # intel10
         feature.append("feature=intel10")
     elif settings['class_pref'] == '150': # intel14
-        feature.append("feature=intel14")
+        feature.append("feature='css|csp|csn|csm'")
+    elif settings['class_pref'] == '200': # intel16
+        feature.append("feature=intel16")
 
 if len(feature) > 0:
     l_string.append(":".join(feature))
@@ -159,12 +163,18 @@ script_template_basic = """
 #!/bin/bash -login
 #PBS -q main
 #PBS -l %lstring%
+#PBS -l nodes=1:ppn=%ppn%
 #PBS -N %jobname%
 #PBS -o %dest_dir%/%jobname%_message.log
 #PBS -j oe
 #PBS -t %job_seeds%
 #PBS -M %email_address%
 #PBS -l epilogue=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
+
+DIST_QSUB_DIR=%dist_qsub_dir%
+QSUB_DIR=%qsub_dir%
+QSUB_FILE=%qsub_file%
+MAX_QUEUE=%max_queue%
 
 TARGETDIR=%dest_dir%
 STARTSEED=%start_seed%
@@ -190,12 +200,45 @@ mv dist_transfer.tar.gz $TARGETDIR/$JOBTARGET
 cd $TARGETDIR/$JOBTARGET
 tar xzf dist_transfer.tar.gz
 rm dist_transfer.tar.gz
+gunzip -r .
+
+cp ${QSUB_FILE} ${QSUB_FILE}_done
+echo "${QSUB_FILE} is done"
+
+#remove lock file
+rm ${QSUB_FILE}_done.lock 2> /dev/null
+echo "Lock removed"
+
+#remove original qsub file so we don't have to keep trying to submit it
+rm ${QSUB_FILE} 2> /dev/null
+echo "Original qsub file removed"
+
+echo "Checking to see if there are more jobs that should be started"
+
+qstat -f ${PBS_JOBID} | grep "used"
+export RET
+
+# Make sure not to submit too many jobs
+current_jobs=$(showq -u `whoami` | tail -2 | head -1 | cut -d " " -f 4)
+echo "There are currently ${current_jobs} jobs in the queue"
+
+if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
+then
+    # submits the next job
+    if [ $current_jobs -lt $MAX_QUEUE ]
+    then
+	     echo "Trying to submit another job"
+	     python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
+    fi
+fi
+
 """
 
 script_template_checkpointing = """
 #!/bin/bash -login
 #PBS -q main
 #PBS -l %lstring%
+#PBS -l nodes=1:ppn=%ppn%
 #PBS -N %jobname%
 #PBS -o %dest_dir%/%jobname%_message.log
 #PBS -j oe
@@ -216,6 +259,7 @@ export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
 export DIST_QSUB_DIR=%dist_qsub_dir%
+export QSUB_DIR=%qsub_dir%
 export QSUB_FILE=%qsub_file%
 export MAX_QUEUE=%max_queue%
 
@@ -239,14 +283,19 @@ script_template = script_template.replace( "%lstring_spaces%", " ".join(l_string
 script_template = script_template.replace( "%email_address%", settings['email'])
 script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
+script_template = script_template.replace( "%qsub_dir%", dest_dir+"/qsub_files" )
 script_template = script_template.replace( "%config_dir%", config_dir )
 script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
 script_template = script_template.replace( "%max_queue%", str(options.max_queue))
 script_template = script_template.replace( "%cpr%", settings["cpr"])
+script_template = script_template.replace( "%ppn%", settings["ppn"])
 
 
-if not os.path.exists(dist_qsub_dir+"/qsub_files"):
-    os.mkdir(dist_qsub_dir+"/qsub_files")
+if not os.path.exists(dest_dir):
+    os.mkdir(dest_dir)
+
+if not os.path.exists(dest_dir+"/qsub_files"):
+    os.mkdir(dest_dir+"/qsub_files")
 
 submitted = 0
 
@@ -265,6 +314,8 @@ for command in processes:
 
         if job_ct > 99999 or job_ct < 1:
             exit("Seeds defined in " + command[0] + " are negative or invalid")
+	if job_ct > 100 and not options.nocheckpoint:
+		exit("DO NOT USE CHECKPOINTING WITH ARRAYS LARGER THAN 100!!! Reduce number of treatments per condition or use the --nocheckpoint flag")
 
         command_final = command_final.replace( "%start_seed%", str(start_seed))
         command_final = command_final.replace( "%job_seeds%", job_seeds)
@@ -279,25 +330,23 @@ for command in processes:
     # clean up the target directories
     for i in range(job_ct+1):
         jobtarget = settings['dest_dir'] + "/" + command[1] + "_" + str(start_seed + i)
-        if os.path.exists(jobtarget):
+        if os.path.exists(jobtarget) and settings['cpr'] == "0":
             os.system("mv " + jobtarget + " " + jobtarget + "_bak")
 
-    qsub_file = dist_qsub_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
+    qsub_file = dest_dir+"/qsub_files/"+str(command[1])+"_"+str(command[0]+".qsub")
 
     command_final = command_final.replace("%qsub_file%", qsub_file)
 
+    os.system("rm {0}*".format(qsub_file))
+    f = open(qsub_file, "w")
+    f.write(command_final)
+    f.close()
+
     if not options.printonly and submitted <= options.max_queue:
-
         print "Submitting: " + command[1]
-        os.system("rm {0}*".format(qsub_file))
-
-        f = open(qsub_file, "w")
-        f.write(command_final)
-        f.close()
-
         os.system("qsub {0}".format(qsub_file))
-
         with open(qsub_file+"_done.lock", "wb") as lockfile:
             lockfile.write("submitted by dist_qsub")
+
     time.sleep(2)
     submitted += job_ct

@@ -12,11 +12,12 @@ from os import path, makedirs, remove
 from subprocess import call
 import time
 import errno
+import sys
 
 def try_run(jobid, command, task_finished_file):
     '''
     Determine if a specific command should be performed by this process.
-    
+
     jobid - The unique identifier of this job
     command - The execuable call + all of its arguments to perform
     task_finished_file - This file exists only if a run was successful
@@ -44,7 +45,7 @@ def try_run(jobid, command, task_finished_file):
     # Execute the command. This is a blocking call.
     call(command.split())
     # If the task was successful, remove the lock.
-    # If the task failed, the lock must be removed manually. Prevents cascade failure. 
+    # If the task failed, the lock must be removed manually. Prevents cascade failure.
     return True
 
 def make_sure_folders_exists(filename):
@@ -66,15 +67,17 @@ if __name__ == "__main__":
     from glob import glob
     jobname = sys.argv[1]
 
-    dist_qsub_dir = os.path.dirname(os.path.realpath(__file__))
-
+    if len(sys.argv) < 3:
+        qsub_dir = os.path.dirname(os.path.realpath(__file__))
+    else:
+        qsub_dir = sys.argv[2]
 
     # Iterate over each configuration I want to test
-    for qsub_file in glob(dist_qsub_dir+"/qsub_files/*.qsub"):
+    for qsub_file in glob(qsub_dir+"/*.qsub"):
         if try_run(jobname, "qsub {0}".format(qsub_file), qsub_file+"_done"):
             print "Job Completed"
             # Remove the following line if you want a
             # single call to run multiple configurations
             sys.exit()
     print "No jobs left to run, stopping resubmissions"
-    open(dist_qsub_dir+"/finished.txt", 'w').close()
+    open(qsub_dir+"/finished.txt", 'w').close()

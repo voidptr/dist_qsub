@@ -2,5 +2,8 @@
 
 for file in *_bak; 
 do     
-    mv "$file" "`basename $file _bak`"; 
+    if [ ! -d "`basename $file _bak`" ];
+    then
+	mv "$file" "`basename $file _bak`"; 
+    fi
 done
