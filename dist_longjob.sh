@@ -158,8 +158,8 @@ resubmit_array() {
 
                 corrected_lstring=`echo $LSTRING | tr " " ","`
 
-                echo sbatch -H -C $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.%a.log --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mailuser=$MAILUSER
-                sbatch -H -C $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.%a.log --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mailuser=$MAILUSER
+                echo sbatch -H -C $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mailuser=$MAILUSER
+                sbatch -H -C $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mailuser=$MAILUSER
 
                 sleep 10
 
