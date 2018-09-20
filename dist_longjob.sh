@@ -52,24 +52,6 @@ then
     fi
 fi
 
-######################## start dmtcp_coordinator #######################
-# current working directory shuld have source code dmtcp1.c
-cd ${SLURM_SUBMIT_DIR}
-
-fname=port.$SLURM_JOBID                                                                 # to store port number 
-dmtcp_coordinator --daemon --exit-on-last -p 0 --port-file $fname $@ 1>/dev/null 2>&1   # start coordinater
-h=`hostname`                                                                            # get coordinator's host name 
-p=`cat $fname`                                                                          # get coordinator's port number 
-export DMTCP_COORD_HOST=$h                                                  # save coordinators host info in an environment variable
-export DMTCP_COORD_PORT=$p                                                  # save coordinators port info in an environment variable
- 
-#rm $fname
- 
-echo "coordinator is on host $DMTCP_COORD_HOST "
-echo "port number is $DMTCP_COORD_PORT "
-echo " working directory: ${SLURM_SUBMIT_DIR} " 
-echo " job script is $SLURM_JOBSCRIPT "
-
 
 checkpoint_finished=0
 
@@ -98,6 +80,24 @@ then
     echo $JOBCOMMAND >> command.sh
     chmod 755 ./command.sh
 
+    ######################## start dmtcp_coordinator #######################
+    # current working directory shuld have source code dmtcp1.c
+    # cd ${SLURM_SUBMIT_DIR}
+
+    fname=port.$SLURM_JOBID                                                                 # to store port number 
+    dmtcp_coordinator --daemon --exit-on-last -p 0 --port-file $fname $@ 1>/dev/null 2>&1   # start coordinater
+    h=`hostname`                                                                            # get coordinator's host name 
+    p=`cat $fname`                                                                          # get coordinator's port number 
+    export DMTCP_COORD_HOST=$h                                                  # save coordinators host info in an environment variable
+    export DMTCP_COORD_PORT=$p                                                  # save coordinators port info in an environment variable
+    
+    #rm $fname
+    
+    echo "coordinator is on host $DMTCP_COORD_HOST "
+    echo "port number is $DMTCP_COORD_PORT "
+    echo " working directory: ${SLURM_SUBMIT_DIR} " 
+    echo " job script is $SLURM_JOBSCRIPT "
+
 
     # Add this ID to the list of ids associated with this chunk of jobs
     trimmedid=${SLURM_ARRAY_JOB_ID}
@@ -107,17 +107,38 @@ then
 
     dmtcp_launch -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT --rm --ckpt-open-files ./command.sh 1> run.log 2>&1 &
     PID=$!
+    echo "Started!" >> run.log
 else 
     ## restart an existing job!
     
     # go to the final location, where we should've stashed our checkpoint
     cd $TARGETDIR/$JOBTARGET
 
+    ######################## start dmtcp_coordinator #######################
+    # current working directory shuld have source code dmtcp1.c
+    # cd ${SLURM_SUBMIT_DIR}
+
+    fname=port.$SLURM_JOBID                                                                 # to store port number 
+    dmtcp_coordinator --daemon --exit-on-last -p 0 --port-file $fname $@ 1>/dev/null 2>&1   # start coordinater
+    h=`hostname`                                                                            # get coordinator's host name 
+    p=`cat $fname`                                                                          # get coordinator's port number 
+    export DMTCP_COORD_HOST=$h                                                  # save coordinators host info in an environment variable
+    export DMTCP_COORD_PORT=$p                                                  # save coordinators port info in an environment variable
+    
+    #rm $fname
+    
+    echo "coordinator is on host $DMTCP_COORD_HOST "
+    echo "port number is $DMTCP_COORD_PORT "
+    echo " working directory: ${SLURM_SUBMIT_DIR} " 
+    echo " job script is $SLURM_JOBSCRIPT "
+
+
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
     dmtcp_restart -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT ckpt_*.dmtcp >> run.log 2>&1 &
     PID=$!
+    echo "Restarted" >> run.log
 fi
 
 
@@ -331,6 +352,11 @@ handle_didnt_timeout() {
         # Psych, we did time out
         echo "Already checkpointed. Going back to sleep"
         exit 0
+    fi
+
+    if dmtcp_command -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT -s 1>/dev/null 2>&1
+    then
+        echo "Something has gone wrong - the job is still running"
     fi
 
     echo "$timeout_retries timeouts"
