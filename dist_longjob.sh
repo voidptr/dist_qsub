@@ -280,80 +280,6 @@ resubmit_array() {
     exit 0
 }
 
-
-checkpoint_timeout() {
-    # if program is still running, do the checkpoint and resubmit
-
-    if dmtcp_command -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT -s 1>/dev/null 2>&1
-    then  
-        # clean up old ckpt files before start checkpointing
-        rm -r ckpt_*.dmtcp
-
-        # checkpointing the job
-        echo "About to checkpoint"
-        dmtcp_command -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT --ckpt-open-files -bc
-
-        if [ ! "$?" == "0" ]
-        then
-            echo "Checkpoint issue 1"
-            
-            # # If there were no successful checkpoints letting this get resubmitted again
-            # # won't help. It will have to be resubmitted manually.
-            # # TODO: There's probably a way to make that happen automatically
-            # if [ ! -f checkpoint.blcr ] && [ ! -f checkpoint_safe.blcr ]
-            # then
-            #     exit 2
-            # fi
-            
-        fi
-
-        echo "About to kill running program"
-        # kill the running program and quit
-        dmtcp_command -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT --quit
-
-        if [ ! "$?" == "0" ]
-        then
-            echo "Checkpoint issue 2"
-        fi
-
-
-        # resubmit this script to slurm
-        #sbatch $SLURM_JOBSCRIPT
-
-        # Clear repeated failure tracker
-        rm last_failed 2> /dev/null
-        rm last_two_failed 2> /dev/null
-
-        resubmit_array
-        checkpoint_finished=1
-
-    else
-
-        echo "job finished"
-
-    fi
-
-}
-
-# begin checkpoint timeout, which will go in the background.
-# This will run if the job didn't finish before the timer runs out.
-# Because the timeout kills the job, the wait ${PID} below will return.
-# Even after the wait ${PID} below returns, the timeout may still be going,
-# what with re-submitting the job, etc.
-echo $BLCR_WAIT_SEC
-(sleep $BLCR_WAIT_SEC; echo 'Timer Done'; checkpoint_timeout;) &
-timeout=$!
-echo "starting timer (${timeout}) for $BLCR_WAIT_SEC seconds"
-echo "Waiting on cr_run job: $PID"
-echo "ZZzzzzz"
-wait ${PID}
-RET=$?
-
-###############################################################################
-############### NOW WE WAIT ###################################################
-###############################################################################
-
-
 handle_didnt_timeout() {
 # Ooh, we're executing again. Something musta happened.
 
@@ -561,6 +487,76 @@ handle_didnt_timeout() {
 
 }
 
-timeout_retries=$(expr $timeout_retries + 1)
-handle_didnt_timeout
-echo "Done with everything"
+
+# begin checkpoint timeout, which will go in the background.
+# This will run if the job didn't finish before the timer runs out.
+# Because the timeout kills the job, the wait ${PID} below will return.
+# Even after the wait ${PID} below returns, the timeout may still be going,
+# what with re-submitting the job, etc.
+echo "Sleeping for $BLCR_WAIT_SEC seconds"
+sleep $BLCR_WAIT_SEC
+
+
+###############################################################################
+############### NOW WE WAIT ###################################################
+###############################################################################
+
+if dmtcp_command -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT -s 1>/dev/null 2>&1
+then  
+    # clean up old ckpt files before start checkpointing
+    rm -r ckpt_*.dmtcp
+
+    # checkpointing the job
+    echo "About to checkpoint"
+    dmtcp_command -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT --ckpt-open-files -bc
+
+    if [ ! "$?" == "0" ]
+    then
+        echo "Checkpoint issue 1"
+        
+        # # If there were no successful checkpoints letting this get resubmitted again
+        # # won't help. It will have to be resubmitted manually.
+        # # TODO: There's probably a way to make that happen automatically
+        # if [ ! -f checkpoint.blcr ] && [ ! -f checkpoint_safe.blcr ]
+        # then
+        #     exit 2
+        # fi
+        
+    fi
+
+    echo "About to kill running program"
+    # kill the running program and quit
+    dmtcp_command -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT --quit
+
+    if [ ! "$?" == "0" ]
+    then
+        echo "Checkpoint issue 2"
+    fi
+
+    wait ${PID}
+    RET=$?
+
+    if [ ! "$RET" != "0" ]
+    then
+        echo "Something went wrong with the command"
+    fi
+
+    # resubmit this script to slurm
+    #sbatch $SLURM_JOBSCRIPT
+
+    # Clear repeated failure tracker
+    rm last_failed 2> /dev/null
+    rm last_two_failed 2> /dev/null
+    checkpoint_finished=1
+    resubmit_array
+
+else
+
+    echo "We didn't time out!"
+    wait ${PID}
+    RET=$?
+    timeout_retries=$(expr $timeout_retries + 1)
+    handle_didnt_timeout
+    echo "Done with everything"
+
+fi
