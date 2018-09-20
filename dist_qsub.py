@@ -165,8 +165,7 @@ if 'email_when' in settings.keys() and settings['email_when'] == "always":
 # Email notifications are now broken, since slurm doesn't seem to have an epilogue.
 # We'll need to investigate new options
 
-script_template_basic = """
-#!/bin/bash -login
+script_template_basic = """#!/bin/bash -login
 #SBATCH -C %feature%
 #SBATCH -c %ppn% --mem=%mem%
 #SBATCH -J %jobname%
@@ -237,8 +236,7 @@ fi
 
 """
 
-script_template_checkpointing = """
-#!/bin/bash -login
+script_template_checkpointing = """#!/bin/bash -login
  
 ## resource requests for task:
 #SBATCH -J %jobname%                  # Job Name
@@ -251,6 +249,8 @@ script_template_checkpointing = """
  
 export PPN=%ppn%
 export MEM=%mem%
+export TIME=%time%
+export MAILUSER=%mail_address%
 export TARGETDIR=%dest_dir%
 export STARTSEED=%start_seed%
 export seed=$(($STARTSEED + $SLURM_ARRAY_TASK_ID))
