@@ -100,7 +100,7 @@ then
 
 
     # Add this ID to the list of ids associated with this chunk of jobs
-    trimmedid=`echo ${SLURM_ARRAY_JOB_ID} | cut -d _ -f 2`
+    trimmedid=${SLURM_ARRAY_JOB_ID}
     echo $trimmedid >> ${QSUB_FILE}_successor_jobs.txt
 
     # and run it with cr_run
@@ -126,7 +126,7 @@ resubmit_array() {
     ## calculate what the successor job's name should be
 
     # trim out the excess after the [ from the jobID
-    trimmedid=`echo ${SLURM_ARRAY_JOB_ID} | rev | cut -d[ -f2- | rev`
+    trimmedid=${SLURM_ARRAY_JOB_ID}
 
     # now, trim the completed name down to 16 characters because that's
     # what'll show up on qstat
@@ -430,10 +430,9 @@ handle_didnt_timeout() {
     echo "Cleanup time"
 
     ## delete our successor job, should there be one
-    # trim out the excess after the [ from the jobID
+
     echo "Cleanup - PREPPING TO DELETE UN-NEEDED SUBJOBS"
-    trimmedid=`echo ${SLURM_ARRAY_JOB_ID} | cut -d _ -f 2 `
-    echo "echo ${SLURM_ARRAY_JOB_ID} | cut -d _ -f 2"
+    trimmedid=${SLURM_ARRAY_JOB_ID}
     echo trimmedid = $trimmedid
     # now, trim the completed name down to 16 characters because that's
     # what'll show up on qstat
