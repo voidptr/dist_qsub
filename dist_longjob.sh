@@ -42,7 +42,7 @@ timeout_retries=0
 
 
 # Double-check that this job isn't already done (someone might have been trying to resubmit other jobs in the array)
-if [ -f ${SLURM_ARRAY_TASK_ID} ${QSUB_FILE}_done_arrayjobs.txt ]
+if [ -f ${QSUB_FILE}_done_arrayjobs.txt ]
 then 
     isdone=`grep -w ${SLURM_ARRAY_TASK_ID} ${QSUB_FILE}_done_arrayjobs.txt | wc -l`
     if [ $isdone -eq 1 ]
@@ -137,8 +137,8 @@ resubmit_array() {
     sleep $[ 3 + $[ RANDOM % 10 ]]
 
     # look through qstat until you find the name
-    echo "squeue -l -u $SLURM_JOB_ACCOUNT | grep $sname | wc -l"
-    combinedstatus=`squeue -l -u $SLURM_JOB_ACCOUNT | grep $sname | wc -l`
+    echo "squeue -l -u $SLURM_JOB_USER | grep $sname | wc -l"
+    combinedstatus=`squeue -l -u $SLURM_JOB_USER | grep $sname | wc -l`
 
     # if we didn't find it, go ahead and race to make the successor job ourselves
     # and start it in a held state
@@ -167,8 +167,8 @@ resubmit_array() {
 
                 ### Grab the ID of the job we just made and stuff it into the jobs file
                 ### Original ID should have already been added above
-                echo "squeue -u $SLURM_JOB_ACCOUNT -o"%A %j" | grep "$sname" | cut -d " " -f 1"
-                mysid=`squeue -u $SLURM_JOB_ACCOUNT -o"%A %j" | grep "$sname" | cut -d " " -f 1`
+                echo "squeue -u $SLURM_JOB_USER -o"%A %j" | grep "$sname" | cut -d " " -f 1"
+                mysid=`squeue -u $SLURM_JOB_USER -o"%A %j" | grep "$sname" | cut -d " " -f 1`
                 echo $mysid >> ${QSUB_FILE}_successor_jobs.txt
 		
 		# Attempt to restart any orphaned jobs (i.e. jobs that should run but that don't have any jobs around
@@ -176,7 +176,7 @@ resubmit_array() {
 		# Start by iterating over all jobs in the current array that are still in the held state
 		# (since it's suspicious that they haven't even started running and this one is already done)
         # This grep selects lines with the correct trimmedid and priority of 0 (meaning they are held)
-		for jid in $(squeue -r -u $SLURM_JOB_ACCOUNT -o"%A %j %K %p" | grep -E "^$trimmedid.*0\.0+$" | cut -d ' ' -f 3)
+		for jid in $(squeue -r -u $SLURM_JOB_USER -o"%A %j %K %p" | grep -E "^$trimmedid.*0\.0+$" | cut -d ' ' -f 3)
 		do 
 		    # If this job is already completely done, go to the next iteration so we don't accidentally restart it
 		    isdone=`grep -w $jid ${QSUB_FILE}_done_arrayjobs.txt | wc -l`
@@ -226,8 +226,8 @@ resubmit_array() {
 
     # now, find the ID of the successor job
     # trim it down so we can send messages to it.
-    echo "squeue -u $SLURM_JOB_ACCOUNT -o"%A %j" | grep "$sname" | cut -d " " -f 1"
-    mysid=`squeue -u $SLURM_JOB_ACCOUNT -o"%A %j" | grep "$sname" | cut -d " " -f 1`
+    echo "squeue -u $SLURM_JOB_USER -o"%A %j" | grep "$sname" | cut -d " " -f 1"
+    mysid=`squeue -u $SLURM_JOB_USER -o"%A %j" | grep "$sname" | cut -d " " -f 1`
 
     # send an un-hold message to our particular successor sub-job
     echo "scontrol release ${sid}_scontrol release ${mysid}_$jid"
@@ -441,8 +441,8 @@ handle_didnt_timeout() {
     echo "echo "${trimmedid}_${JOBNAME}" | cut -c 1-16"
     echo sname = $sname
 
-    sid=`squeue -u $SLURM_JOB_ACCOUNT -o"%A %j" | grep "$sname" | cut -d " " -f 1`
-    echo "squeue -u $SLURM_JOB_ACCOUNT -o"%A %j" | grep "$sname" | cut -d " " -f 1"
+    sid=`squeue -u $SLURM_JOB_USER -o"%A %j" | grep "$sname" | cut -d " " -f 1`
+    echo "squeue -u $SLURM_JOB_USER -o"%A %j" | grep "$sname" | cut -d " " -f 1"
     echo Found Successor ID: $sid
     if [ -n "$sid" ]
     then
