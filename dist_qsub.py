@@ -166,7 +166,7 @@ if 'email_when' in settings.keys() and settings['email_when'] == "always":
 # We'll need to investigate new options
 
 script_template_basic = """#!/bin/bash -login
-#SBATCH -C %feature%
+#SBATCH -C %features%
 #SBATCH -c %ppn% --mem=%mem%
 #SBATCH -J %jobname%
 #SBATCH --mail-user=%email_address%
@@ -283,7 +283,7 @@ script_template = script_template_basic
 if options.checkpoint and not options.nocheckpoint:
     script_template = script_template_checkpointing
 
-script_template = script_template.replace( "%feature%", feature_string)
+script_template = script_template.replace( "%features%", feature_string)
 script_template = script_template.replace( "%email_address%", settings['email'])
 script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
