@@ -244,7 +244,7 @@ script_template_checkpointing = """#!/bin/bash -login
 #SBATCH -c %ppn% --mem=%mem%          # Requested resource
 #SBATCH --constraint=%features%       # Set feature requests
 #SBATCH --mail-user=%email_address% 
-#SBATCH -o %dest_dir%/%jobname%_message.log
+#SBATCH -o %dest_dir%/%jobname%_message.log-%a
 #SBATCH --array=%job_seeds%
  
 export PPN=%ppn%
