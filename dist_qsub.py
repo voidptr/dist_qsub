@@ -170,7 +170,7 @@ script_template_basic = """#!/bin/bash -login
 #SBATCH -c %ppn% --mem=%mem%
 #SBATCH -J %jobname%
 #SBATCH --mail-user=%email_address%
-#SBATCH -o %dest_dir%/%jobname%_message.log
+#SBATCH -o %dest_dir%/%jobname%_message.log%a
 #SBATCH --array=%job_seeds%
 
 DIST_QSUB_DIR=%dist_qsub_dir%
