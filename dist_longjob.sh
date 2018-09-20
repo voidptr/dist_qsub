@@ -326,6 +326,13 @@ RET=$?
 handle_didnt_timeout() {
 # Ooh, we're executing again. Something musta happened.
 
+    if [ "$checkpoint_finished" -eq "1" ]
+    then
+        # Psych, we did time out
+        echo "Already checkpointed. Going back to sleep"
+        exit 0
+    fi
+
     echo "$timeout_retries timeouts"
     # ELSE:
     ######################### JOB COMPLETED ##############################
@@ -499,7 +506,7 @@ handle_didnt_timeout() {
     # export RET
 
     # Make sure not to submit too many jobs
-    current_jobs=expr $(squeue -u $user | wc -l) - 1
+    current_jobs=`expr $(squeue -u $user | wc -l) - 1`
     echo "There are currently ${current_jobs} jobs in the queue"
 
     if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
