@@ -350,7 +350,7 @@ for command in processes:
 
     if not options.printonly and submitted <= options.max_queue:
         print "Submitting: " + command[1]
-        os.system("qsub {0}".format(qsub_file))
+        os.system("sbatch {0}".format(qsub_file))
         with open(qsub_file+"_done.lock", "wb") as lockfile:
             lockfile.write("submitted by dist_qsub")
 
