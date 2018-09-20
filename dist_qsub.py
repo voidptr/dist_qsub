@@ -103,7 +103,7 @@ for command in processes:
     command[2] = ";".join(newcomm)
 
 
-l_string = []
+feature_string = ""
 
 #p_string = []
 #if ('ppn' in settings.keys()):
@@ -115,24 +115,22 @@ l_string = []
 
 feature = []
 if ('feature' in settings.keys()):
-    feature_str = settings['feature'].split(',')
-    for ftr in feature_str:
-        feature.append("feature=" + ftr)
+    feature = settings['feature'].split(',')
 
 if ('class_pref' in settings.keys()):
     if settings['class_pref'] == '91': # amd05
-        feature.append("feature=amd05")
+        feature.append("amd05")
     elif settings['class_pref'] == '92': # intel07
-        feature.append("feature=intel07")
+        feature.append("intel07")
     elif settings['class_pref'] == '95': # intel10
-        feature.append("feature=intel10")
+        feature.append("intel10")
     elif settings['class_pref'] == '150': # intel14
-        feature.append("feature='css|csp|csn|csm'")
+        feature.append("css|csp|csn|csm")
     elif settings['class_pref'] == '200': # intel16
-        feature.append("feature=intel16")
+        feature.append("intel16")
 
 if len(feature) > 0:
-    l_string.append(":".join(feature))
+    feature_string = "|".join(feature)
 
 config_dir = "config"
 if ('config_dir' in settings.keys()):
@@ -150,26 +148,31 @@ if ('walltime' in settings.keys()):
     remaining_fraction = float(settings['walltime']) - hours
     minutes = int(remaining_fraction * 60)
     seconds = int(((remaining_fraction * 60) - minutes) * 60)
-    l_string.append( "walltime=" + str(hours) + ":" + str(minutes).zfill(2) + ":" + str(seconds).zfill(2) )
+    walltime = str(hours) + ":" + str(minutes).zfill(2) + ":" + str(seconds).zfill(2)
+else:
+    walltime = "00:01:00"
+
 if ('mem_request' in settings.keys()):
-    l_string.append( "mem=" + str(int(float(settings['mem_request']) * 1024)) + "mb" )
+    # l_string.append( "mem=" + str(int(float(settings['mem_request']) * 1024)) + "mb" )
+    mem = str(int(float(settings['mem_request']) * 1024)) + "mb"
+else:
+    mem = "750m"
 
 email_when = "final"
 if 'email_when' in settings.keys() and settings['email_when'] == "always":
     email_when = "always"
 
+# Email notifications are now broken, since slurm doesn't seem to have an epilogue.
+# We'll need to investigate new options
 
 script_template_basic = """
 #!/bin/bash -login
-#PBS -q main
-#PBS -l %lstring%
-#PBS -l nodes=1:ppn=%ppn%
-#PBS -N %jobname%
-#PBS -o %dest_dir%/%jobname%_message.log
-#PBS -j oe
-#PBS -t %job_seeds%
-#PBS -M %email_address%
-#PBS -l epilogue=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
+#SBATCH -C %feature%
+#SBATCH -c %ppn% --mem=%mem%
+#SBATCH -J %jobname%
+#SBATCH --mail-user=%email_address%
+#SBATCH -o %dest_dir%/%jobname%_message.log
+#SBATCH --array=%job_seeds%
 
 DIST_QSUB_DIR=%dist_qsub_dir%
 QSUB_DIR=%qsub_dir%
@@ -178,13 +181,13 @@ MAX_QUEUE=%max_queue%
 
 TARGETDIR=%dest_dir%
 STARTSEED=%start_seed%
-seed=$(($STARTSEED + $PBS_ARRAYID))
+seed=$(($STARTSEED + $SLURM_ARRAY_TASK_ID))
 JOBTARGET=%jobname%"_"$seed
 
-#echo "seed="$seed "jobtarget="$JOBTARGET "targetdir="$TARGETDIR "pbs_arrayid="$PBS_ARRAYID "pbs_jobname="$PBS_JOBNAME "tmpdir="$TMPDIR;
+#echo "seed="$seed "jobtarget="$JOBTARGET "targetdir="$TARGETDIR "slurm_arrayid="$SLURM_ARRAY_TASK_ID "slurm_jobname="$SLURM_JOBNAME "tmpdir="$TMPDIR;
 
 #change directory to the directory this was run from
-cd $PBS_O_WORKDIR
+cd $SLURM_SUBMIT_DIR
 mkdir $TMPDIR/$JOBTARGET
 cp -r %config_dir%/* $TMPDIR/$JOBTARGET
 cd $TMPDIR/$JOBTARGET
@@ -215,7 +218,7 @@ echo "Original qsub file removed"
 
 echo "Checking to see if there are more jobs that should be started"
 
-qstat -f ${PBS_JOBID} | grep "used"
+qstat -f ${SLURM_ARRAY_JOB_ID} | grep "used"
 export RET
 
 # Make sure not to submit too many jobs
@@ -228,7 +231,7 @@ then
     if [ $current_jobs -lt $MAX_QUEUE ]
     then
 	     echo "Trying to submit another job"
-	     python $DIST_QSUB_DIR/scheduler.py ${PBS_JOBID} $QSUB_DIR
+	     python $DIST_QSUB_DIR/scheduler.py ${SLURM_ARRAY_JOB_ID} $QSUB_DIR
     fi
 fi
 
@@ -236,25 +239,27 @@ fi
 
 script_template_checkpointing = """
 #!/bin/bash -login
-#PBS -q main
-#PBS -l %lstring%
-#PBS -l nodes=1:ppn=%ppn%
-#PBS -N %jobname%
-#PBS -o %dest_dir%/%jobname%_message.log
-#PBS -j oe
-#PBS -t %job_seeds%
-#PBS -M %email_address%
-
+ 
+## resource requests for task:
+#SBATCH -J %jobname%                  # Job Name
+#SBATCH --time=%time%                 # Walltime
+#SBATCH -c %ppn% --mem=%mem%          # Requested resource
+#SBATCH --constraint=%features%       # Set feature requests
+#SBATCH --mail-user=%email_address% 
+#SBATCH -o %dest_dir%/%jobname%_message.log
+#SBATCH --array=%job_seeds%
+ 
+export PPN=%ppn%
+export MEM=%mem%
 export TARGETDIR=%dest_dir%
 export STARTSEED=%start_seed%
-export seed=$(($STARTSEED + $PBS_ARRAYID))
+export seed=$(($STARTSEED + $SLURM_ARRAY_TASK_ID))
 export JOBTARGET=%jobname%"_"$seed
 export JOBNAME=%jobname%
 export JOBSEEDS=%job_seeds%
 export DEST_DIR=%dest_dir%
-export LSTRING="%lstring_spaces%"
+export CONSTRAINT=%features%
 export JOBCOMMAND="%job_command%"
-export CPR=%cpr%
 export CONFIGDIR=%config_dir%
 export EMAILSCRIPT=/mnt/research/devolab/dist_qsub/email_%email_when%.sh
 export USESCRATCH=%use_scratch%
@@ -278,8 +283,7 @@ script_template = script_template_basic
 if options.checkpoint and not options.nocheckpoint:
     script_template = script_template_checkpointing
 
-script_template = script_template.replace( "%lstring%", ",".join(l_string))
-script_template = script_template.replace( "%lstring_spaces%", " ".join(l_string))
+script_template = script_template.replace( "%feature%", feature_string)
 script_template = script_template.replace( "%email_address%", settings['email'])
 script_template = script_template.replace( "%email_when%", email_when)
 script_template = script_template.replace( "%dest_dir%", dest_dir )
@@ -289,6 +293,8 @@ script_template = script_template.replace( "%dist_qsub_dir%", dist_qsub_dir)
 script_template = script_template.replace( "%max_queue%", str(options.max_queue))
 script_template = script_template.replace( "%cpr%", settings["cpr"])
 script_template = script_template.replace( "%ppn%", settings["ppn"])
+script_template = script_template.replace( "%time%", walltime)
+script_template = script_template.replace( "%mem%", mem)
 
 
 if not os.path.exists(dest_dir):
@@ -314,8 +320,8 @@ for command in processes:
 
         if job_ct > 99999 or job_ct < 1:
             exit("Seeds defined in " + command[0] + " are negative or invalid")
-	if job_ct > 100 and not options.nocheckpoint:
-		exit("DO NOT USE CHECKPOINTING WITH ARRAYS LARGER THAN 100!!! Reduce number of treatments per condition or use the --nocheckpoint flag")
+        if job_ct > 100 and not options.nocheckpoint:
+            exit("DO NOT USE CHECKPOINTING WITH ARRAYS LARGER THAN 100!!! Reduce number of treatments per condition or use the --nocheckpoint flag")
 
         command_final = command_final.replace( "%start_seed%", str(start_seed))
         command_final = command_final.replace( "%job_seeds%", job_seeds)
