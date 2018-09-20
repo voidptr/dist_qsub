@@ -170,7 +170,7 @@ script_template_basic = """#!/bin/bash -login
 #SBATCH -c %ppn% --mem=%mem%
 #SBATCH -J %jobname%
 #SBATCH --mail-user=%email_address%
-#SBATCH --output=%dest_dir%/%jobname%_message.log-%a
+#SBATCH --output=%dest_dir%/%jobname%_message.%a.log
 #SBATCH --array=%job_seeds%
 
 DIST_QSUB_DIR=%dist_qsub_dir%
@@ -244,7 +244,7 @@ script_template_checkpointing = """#!/bin/bash -login
 #SBATCH -c %ppn% --mem=%mem%          # Requested resource
 #SBATCH --constraint=%features%       # Set feature requests
 #SBATCH --mail-user=%email_address% 
-#SBATCH --output=%dest_dir%/%jobname%_messag.log-%a
+#SBATCH --output=%dest_dir%/%jobname%_message.%a.log
 #SBATCH --array=%job_seeds%
  
 export PPN=%ppn%
