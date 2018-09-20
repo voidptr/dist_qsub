@@ -98,7 +98,10 @@ for command in processes:
 #        if options.checkpoint:
 #            newcomm.append(bit.lstrip())
 #        else:
-        newcomm.append(bit.lstrip() + " 2>&1 | cat >> run.log")
+        if bit.strip().startswith("for"):
+            newcomm.append(bit.lstrip())
+        else:
+            newcomm.append(bit.lstrip() + ">> run.log 2>&1")
 
     command[2] = ";".join(newcomm)
 
