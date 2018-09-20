@@ -100,7 +100,7 @@ then
 
 
     # Add this ID to the list of ids associated with this chunk of jobs
-    trimmedid=`echo ${SLURM_JOBID} | rev | cut -d[ -f2- | rev`
+    trimmedid=`echo ${SLURM_JOBID} | cut -d _ -f 2`
     echo $trimmedid >> ${QSUB_FILE}_successor_jobs.txt
 
     # and run it with cr_run
@@ -432,8 +432,8 @@ handle_didnt_timeout() {
     ## delete our successor job, should there be one
     # trim out the excess after the [ from the jobID
     echo "Cleanup - PREPPING TO DELETE UN-NEEDED SUBJOBS"
-    trimmedid=`echo ${SLURM_JOBID} | rev | cut -d[ -f2- | rev`
-    echo "echo ${SLURM_JOBID} | rev | cut -d[ -f2- | rev"
+    trimmedid=`echo ${SLURM_JOBID} | cut -d _ -f 2 `
+    echo "echo ${SLURM_JOBID} | cut -d _ -f 2"
     echo trimmedid = $trimmedid
     # now, trim the completed name down to 16 characters because that's
     # what'll show up on qstat
