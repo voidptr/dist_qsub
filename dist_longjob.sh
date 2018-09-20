@@ -454,24 +454,26 @@ handle_didnt_timeout() {
 
     #delete all the finished jobs we know about (for sanity)
     echo "Deleting all other unneeded successor subjobs."
-    while read j || [[ -n $j ]]
-    do
-        # Sucessors for jobs that have already been marked as done
-        while read p || [[ -n $p ]]
+    if [ -f ${QSUB_FILE}_done_arrayjobs.txt ]
+    then
+        while read j || [[ -n $j ]]
         do
-            # TODO: CHECK TO SEE IF THESE EXIST BEFORE WE CANCEL THEM!
-            echo scancel $j_$p
-            scancel $j_$p
-        done <${QSUB_FILE}_done_arrayjobs.txt
+            # Sucessors for jobs that have already been marked as done
+            while read p || [[ -n $p ]]
+            do
+                # TODO: CHECK TO SEE IF THESE EXIST BEFORE WE CANCEL THEM!
+                echo scancel $j_$p
+                scancel $j_$p
+            done <${QSUB_FILE}_done_arrayjobs.txt
 
-        # Delete this job from other arrays
-        if [ $j -ne $trimmedid ]
-        then
-            scancel $j_${SLURM_ARRAY_TASK_ID}
-        fi
+            # Delete this job from other arrays
+            if [ $j -ne $trimmedid ]
+            then
+                scancel $j_${SLURM_ARRAY_TASK_ID}
+            fi
 
-    done <${QSUB_FILE}_successor_jobs.txt
-
+        done <${QSUB_FILE}_successor_jobs.txt
+    fi
     #Notify the email script that we're done.
     # If all sub-jobs are done, it'll email the user that
     # the job has completed
@@ -497,7 +499,7 @@ handle_didnt_timeout() {
     # export RET
 
     # Make sure not to submit too many jobs
-    current_jobs=$(showq -u $user | tail -2 | head -1 | cut -d " " -f 4)
+    current_jobs=expr $(squeue -u $user | wc -l) - 1
     echo "There are currently ${current_jobs} jobs in the queue"
 
     if [ ! -f $QSUB_DIR/finished.txt ] # If "finished.txt" exists, no more tasks need to be done
