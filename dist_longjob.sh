@@ -100,7 +100,7 @@ then
 
 
     # Add this ID to the list of ids associated with this chunk of jobs
-    trimmedid=`echo ${SLURM_JOBID} | cut -d _ -f 2`
+    trimmedid=`echo ${SLURM_ARRAY_JOB_ID} | cut -d _ -f 2`
     echo $trimmedid >> ${QSUB_FILE}_successor_jobs.txt
 
     # and run it with cr_run
@@ -126,7 +126,7 @@ resubmit_array() {
     ## calculate what the successor job's name should be
 
     # trim out the excess after the [ from the jobID
-    trimmedid=`echo ${SLURM_JOBID} | rev | cut -d[ -f2- | rev`
+    trimmedid=`echo ${SLURM_ARRAY_JOB_ID} | rev | cut -d[ -f2- | rev`
 
     # now, trim the completed name down to 16 characters because that's
     # what'll show up on qstat
@@ -432,8 +432,8 @@ handle_didnt_timeout() {
     ## delete our successor job, should there be one
     # trim out the excess after the [ from the jobID
     echo "Cleanup - PREPPING TO DELETE UN-NEEDED SUBJOBS"
-    trimmedid=`echo ${SLURM_JOBID} | cut -d _ -f 2 `
-    echo "echo ${SLURM_JOBID} | cut -d _ -f 2"
+    trimmedid=`echo ${SLURM_ARRAY_JOB_ID} | cut -d _ -f 2 `
+    echo "echo ${SLURM_ARRAY_JOB_ID} | cut -d _ -f 2"
     echo trimmedid = $trimmedid
     # now, trim the completed name down to 16 characters because that's
     # what'll show up on qstat
@@ -476,7 +476,7 @@ handle_didnt_timeout() {
     #Notify the email script that we're done.
     # If all sub-jobs are done, it'll email the user that
     # the job has completed
-    $EMAILSCRIPT $SLURM_JOBID $USER " " $JOBNAME
+    $EMAILSCRIPT $SLURM_ARRAY_JOB_ID $USER " " $JOBNAME
     echo "Sub-job completed with exit status ${RET}"
 
 
@@ -494,7 +494,7 @@ handle_didnt_timeout() {
 
     echo "Checking to see if there are more jobs that should be started"
 
-    # qstat -f ${SLURM_JOBID} | grep "used"
+    # qstat -f ${SLURM_ARRAY_JOB_ID} | grep "used"
     # export RET
 
     # Make sure not to submit too many jobs
@@ -507,7 +507,7 @@ handle_didnt_timeout() {
         if [ $current_jobs -lt $MAX_QUEUE ]
         then
             echo "Trying to submit another job"
-            python $DIST_QSUB_DIR/scheduler.py ${SLURM_JOBID} $QSUB_DIR
+            python $DIST_QSUB_DIR/scheduler.py ${SLURM_ARRAY_JOB_ID} $QSUB_DIR
         fi
     fi
 
