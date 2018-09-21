@@ -130,7 +130,7 @@ if ('class_pref' in settings.keys()):
         feature.append("intel16")
 
 if len(feature) > 0:
-    feature_string = "--constaint=" + |".join(feature)
+    feature_string = "--constraint=" + |".join(feature)
 
 config_dir = "config"
 if ('config_dir' in settings.keys()):
