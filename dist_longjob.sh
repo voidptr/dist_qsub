@@ -184,8 +184,8 @@ resubmit_array() {
 
                 corrected_lstring=`echo $LSTRING | tr " " ","`
 
-                echo sbatch -H $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mail-user=$MAILUSER
-                sbatch -H $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mail-user=$MAILUSER
+                echo sbatch -H $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mail-user=$MAILUSER ${DIST_QSUB_DIR}/dist_longjob.sh
+                sbatch -H $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mail-user=$MAILUSER ${DIST_QSUB_DIR}/dist_longjob.sh
 
                 sleep 10
 
@@ -538,7 +538,7 @@ then
 
     if [ ! "$RET" != "0" ]
     then
-        echo "Something went wrong with the command"
+        echo "Something went wrong with the command $RET"
     fi
 
     # resubmit this script to slurm
