@@ -56,7 +56,7 @@ fi
 checkpoint_finished=0
 
 ###### get the job going
-if [ ! -f ckpt_*.dmtcp ]    # if no ckpt file exists, it is first time run, use dmtcp_launch
+if ls $TARGETDIR/$JOBTARGET/ckpt_*.dmtcp 1> /dev/null 2>&1;    # if no ckpt file exists, it is first time run, use dmtcp_launch
 then
     ## do the inital work
     #We have no clue where this was actually submitted from, but we know
