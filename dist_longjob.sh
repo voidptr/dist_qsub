@@ -81,14 +81,16 @@ then
     
     echo "coordinator is on host $DMTCP_COORD_HOST "
     echo "port number is $DMTCP_COORD_PORT "
-    echo " working directory: ${SLURM_SUBMIT_DIR} " 
+    echo " working directory: "
+    pwd 
     echo " job script is $SLURM_JOBSCRIPT "
 
 
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
-    dmtcp_restart -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT ckpt_*.dmtcp >> run.log 2>&1 &
+    # dmtcp_restart -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT ckpt_*.dmtcp >> run.log 2>&1 &
+    ./dmtcp_restart_script >> run.log 2>&1 &
     PID=$!
     echo "Restarted" >> run.log
 
