@@ -128,6 +128,8 @@ if ('class_pref' in settings.keys()):
         feature.append("css|csp|csn|csm")
     elif settings['class_pref'] == '200': # intel16
         feature.append("intel16")
+    elif settings['class_pref'] == "lac": # intel16
+        feature.append("lac")
 
 if len(feature) > 0:
     feature_string = "--constraint=" + "|".join(feature)
@@ -267,6 +269,7 @@ export DIST_QSUB_DIR=%dist_qsub_dir%
 export QSUB_DIR=%qsub_dir%
 export QSUB_FILE=%qsub_file%
 export MAX_QUEUE=%max_queue%
+export CPR=0
 
 %dist_qsub_dir%/dist_longjob.sh
 """

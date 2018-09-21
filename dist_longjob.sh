@@ -62,7 +62,8 @@ checkpoint_finished=0
 
 
 ###### get the job going
-if ls $TARGETDIR/$JOBTARGET/ckpt_*.dmtcp 1> /dev/null 2>&1;    # if no ckpt file exists, it is first time run, use dmtcp_launch
+# if ls $TARGETDIR/$JOBTARGET/ckpt_*.dmtcp 1> /dev/null 2>&1;    # if no ckpt file exists, it is first time run, use dmtcp_launch
+if [ $CPR -ne "0" ] ## initial
 then
 
 
@@ -199,8 +200,8 @@ resubmit_array() {
 
                 corrected_lstring=`echo $LSTRING | tr " " ","`
 
-                echo sbatch -H $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mail-user=$MAILUSER ${DIST_QSUB_DIR}/dist_longjob.sh
-                sbatch -H $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mail-user=$MAILUSER ${DIST_QSUB_DIR}/dist_longjob.sh
+                echo sbatch -H $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mail-user=$MAILUSER --export=CPR=0,ALL ${DIST_QSUB_DIR}/dist_longjob.sh
+                sbatch -H $CONSTRAINT -J $sname --output=${DEST_DIR}/${JOBNAME}_message.log-%a --array=$JOBSEEDS -c $PPN --mem=$MEM --time=$TIME --mail-user=$MAILUSER --export=CPR=0,ALL ${DIST_QSUB_DIR}/dist_longjob.sh
 
                 sleep 10
 
@@ -543,7 +544,7 @@ then
     # kill the running program and quit
     dmtcp_command -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT --quit
 
-    if [ ! "$?" == "0" ]
+    if [ "$?" -ne "0" ]
     then
         echo "Checkpoint issue 2"
     fi
@@ -551,7 +552,7 @@ then
     wait ${PID}
     RET=$?
 
-    if [ ! "$RET" != "0" ]
+    if [ "$RET" -ne "0" ]
     then
         echo "Something went wrong with the command $RET"
     fi
