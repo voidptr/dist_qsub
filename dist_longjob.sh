@@ -35,6 +35,11 @@ echo DIST_QSUB_DIR $DIST_QSUB_DIR
 echo QSUB_DIR $QSUB_DIR
 echo QSUB_FILE $QSUB_FILE
 echo MAX_QUEUE $MAX_QUEUE
+echo CONSTRAINT $CONSTRAINT
+echo PPN $PPN
+echo MEM $MEM
+echo MAILUSER $MAILUSER
+echo TIME $TIME
 
 
 user=$(whoami)
@@ -89,8 +94,8 @@ then
     # restart our job, using the pwd we saved before!
     echo "Restarting!"
     echo "HEYA RESTARTING" >> run.log
-    # dmtcp_restart -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT ckpt_*.dmtcp >> run.log 2>&1 &
-    ./dmtcp_restart_script >> run.log 2>&1 &
+    dmtcp_restart -h $DMTCP_COORD_HOST -p $DMTCP_COORD_PORT ckpt_*.dmtcp >> run.log 2>&1 &
+    # ./dmtcp_restart_script.sh >> run.log 2>&1 &
     PID=$!
     echo "Restarted" >> run.log
 
@@ -98,6 +103,8 @@ else
     ## do the inital work
     #We have no clue where this was actually submitted from, but we know
     #the configdir is at the level below it
+
+    echo "Starting new run!"
 
     # create the directory where we will do our work
     mkdir $TARGETDIR/$JOBTARGET
@@ -132,7 +139,8 @@ else
     
     echo "coordinator is on host $DMTCP_COORD_HOST "
     echo "port number is $DMTCP_COORD_PORT "
-    echo " working directory: ${SLURM_SUBMIT_DIR} " 
+    echo " working directory: "
+    pwd 
     echo " job script is $SLURM_JOBSCRIPT "
 
 
