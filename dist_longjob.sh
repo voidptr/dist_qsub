@@ -261,8 +261,8 @@ resubmit_array() {
     mysid=`squeue -u $SLURM_JOB_USER -o"%A %j" | grep "$sname" | cut -d " " -f 1`
 
     # send an un-hold message to our particular successor sub-job
-    echo "scontrol release ${sid}_scontrol release ${mysid}_$jid"
-    scontrol release ${sid}_scontrol release ${mysid}_$jid
+    echo "scontrol release ${mysid}_${SLURM_ARRAY_TASK_ID}"
+    scontrol release ${mysid}_${SLURM_ARRAY_TASK_ID}
 
     #delete all the finished jobs we know about (for sanity)
     echo "Deleting all other unneeded successor subjobs."
