@@ -154,6 +154,8 @@ if ('walltime' in settings.keys()):
 else:
     walltime = "00:01:00"
 
+
+
 if ('mem_request' in settings.keys()):
     # l_string.append( "mem=" + str(int(float(settings['mem_request']) * 1024)) + "mb" )
     mem = str(int(float(settings['mem_request']) * 1024)) + "mb"
@@ -171,6 +173,7 @@ script_template_basic = """#!/bin/bash -login
 #SBATCH %features%
 #SBATCH -c %ppn% --mem=%mem%
 #SBATCH -J %jobname%
+#SBATCH --time=%time%                 # Walltime
 #SBATCH --mail-user=%email_address%
 #SBATCH --output=%dest_dir%/%jobname%_message.log-%a
 #SBATCH --array=%job_seeds%
